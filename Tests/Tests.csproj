@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.10.0" />
+    <Compile Include="../ClientCore.cs" Link="ClientCore.cs" />
+    <Compile Include="../NativeAuth.cs" Link="NativeAuth.cs" />
+    <Compile Include="../InventoryModel.cs" Link="InventoryModel.cs" />
+    <Content Include="../InventoryUi/item-seed-v1.json" Link="item-seed-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../Bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

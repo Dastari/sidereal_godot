@@ -1,0 +1,448 @@
+{
+  "schema": "sidereal.frontend-backdrop-assets.v1",
+  "status": "Interim presentation composition using already published assets; no new model revision or final scene approval. Character replacements remain in the assigned Opus lane.",
+  "sourcePublicationContract": "scripts/prepare_app.py PUBLISHED_RUNTIME in sidereal_spacetime",
+  "simulation": "presentation only; grants no discovery, inventory, movement or structure authority",
+  "assets": [
+    {
+      "id": "int.floor.corridor",
+      "path": "res://Assets/Frontend/int.floor.corridor.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/int.floor.corridor.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "b382c73f0164de41e01cc87ada74f2a757a1b326b47980cc40dc94263f410647",
+      "bytes": 5656,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -1
+        ],
+        "maximum": [
+          1,
+          0.18774999678134918,
+          0
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "int.edge.reinforced",
+      "path": "res://Assets/Frontend/int.edge.reinforced.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/int.edge.reinforced.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "1c24642fa66f58c041b400a9c47b451ac1537a03421553328bf533a5410434d6",
+      "bytes": 27140,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.0002500000118743628,
+          0,
+          -0.4377500116825104
+        ],
+        "maximum": [
+          1.000249981880188,
+          2.3127501010894775,
+          0.06274999678134918
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "int.edge.panel",
+      "path": "res://Assets/Frontend/int.edge.panel.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/int.edge.panel.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "4e6a66a128dcc3362c859b386634495bfa11dba2dc7401e6e93bb82a122e4871",
+      "bytes": 12292,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.0002500000118743628,
+          0,
+          -0.3125
+        ],
+        "maximum": [
+          1.000249981880188,
+          2.3127501010894775,
+          0.0625
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "int.fixture.wall-lamp",
+      "path": "res://Assets/Frontend/int.fixture.wall-lamp.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/int.fixture.wall-lamp.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "50f255afc575afe93e8cc76fb6515d9bc5a312afc4adaaa64f47c09225214e55",
+      "bytes": 4268,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -0.18774999678134918
+        ],
+        "maximum": [
+          0.375,
+          0.375,
+          0
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "int.post",
+      "path": "res://Assets/Frontend/int.post.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/int.post.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "c80daed59714d943f4361b5c88ee6d822e51cdcebb1b1473255d377891f7c2a1",
+      "bytes": 4000,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -0.3752500116825104
+        ],
+        "maximum": [
+          0.375,
+          2.3125,
+          0.0002500000118743628
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "hull.square.deck",
+      "path": "res://Assets/Frontend/hull.square.deck.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/hull.square.deck.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "ef5d1ff2f7236c3f1caaba3ce16aa3e7ffc67c77e71b48ae351a725643c32a86",
+      "bytes": 4560,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -1
+        ],
+        "maximum": [
+          1,
+          2.6875,
+          0
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "hull.slope1.deck",
+      "path": "res://Assets/Frontend/hull.slope1.deck.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/hull.slope1.deck.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "a87e1e8d82a423cf35ee046b821ff756eb1831293e8ab2edc54063655d072161",
+      "bytes": 4748,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -0.9915147423744202
+        ],
+        "maximum": [
+          0.9915147423744202,
+          2.6875,
+          0.032105784863233566
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "ion-drive.sm",
+      "path": "res://Assets/Frontend/ion-drive.sm.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-components/r004/ion-drive.sm.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "c525f2fb96f92c8c8222a48f3a432eb00cc2ec39491c8d5fa77063b9148a3ac5",
+      "bytes": 79796,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.5,
+          -0.5,
+          0
+        ],
+        "maximum": [
+          0.5,
+          0.5,
+          2.75
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "console.navigation.sm",
+      "path": "res://Assets/Frontend/console.navigation.sm.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-components/r004/console.navigation.sm.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "0cb3e2b7d1f6ff2ee283b23d0858f733e1d4e16c8b4ee3ea8cf38048bb5fb288",
+      "bytes": 23316,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.5,
+          0,
+          -0.5
+        ],
+        "maximum": [
+          0.5,
+          1.1875,
+          0.5
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "cargo.standard.medium",
+      "path": "res://Assets/Frontend/cargo.standard.medium.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-objects/r001/cargo.standard.medium.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "c99e18c7474ff19db2067b58dd72e9cdec6d0c384fb4f70bd068ed7b714c677e",
+      "bytes": 13484,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.5,
+          0,
+          -0.5
+        ],
+        "maximum": [
+          0.5,
+          1,
+          0.5
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "cargo.fluid.medium",
+      "path": "res://Assets/Frontend/cargo.fluid.medium.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-objects/r001/cargo.fluid.medium.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "6657b2a5bafc530ab1bf8a0763b6cd4a29083bc5efc23d88f24638ee74bab800",
+      "bytes": 30604,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.5,
+          0,
+          -0.5
+        ],
+        "maximum": [
+          0.5,
+          1.25,
+          0.5
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "shipyard.equipment.wall-locker",
+      "path": "res://Assets/Frontend/shipyard.equipment.wall-locker.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-objects/r001/shipyard.equipment.wall-locker.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "49ced68028218a5e85cf65a6973e0d8f24a42031f4f3764dc82624f0684d5ece",
+      "bytes": 7712,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.375,
+          0,
+          -0.25
+        ],
+        "maximum": [
+          0.375,
+          2,
+          0.25
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "shipyard.equipment.command-console",
+      "path": "res://Assets/Frontend/shipyard.equipment.command-console.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-objects/r001/shipyard.equipment.command-console.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "3dede874288df5f33e9cec018226d3acff46ba33e3be2bf7d4958d3ef3d9e4cb",
+      "bytes": 13472,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          -0.75,
+          0,
+          -0.125
+        ],
+        "maximum": [
+          0.75,
+          0.9375,
+          0.3125
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "orion-veil-v1",
+      "path": "res://Assets/Frontend/orion-veil-v1.png",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/environment/orion-veil-v1.png",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "36f1e04f4bd6a433afd066fd641ce845d2ee590a59f5a220cf1efe65820400b9",
+      "bytes": 2056936,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied."
+    },
+    {
+      "id": "native-deck-kit",
+      "path": "res://Assets/Frontend/native-deck-kit.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/assembly/floor/r002/kit.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "138b483f6052f01e23883b8d8b48bb72cdbace44727c8e717b1e6351c3593585",
+      "bytes": 368076,
+      "units": "metres",
+      "selectedNode": "GEO-part-a3f5c1c3caa171a94d6c--floor",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0,
+          -2
+        ],
+        "maximum": [
+          2,
+          0.1875,
+          0
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling",
+      "visualStatus": "Existing published runtime art. Local candidate integration authorized; final art sign-off absent (floor-manifest.json)."
+    },
+    {
+      "id": "hull.square.wing",
+      "path": "res://Assets/Frontend/hull.square.wing.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/hull.square.wing.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "b200fca419784599e9f96644d644f705825e574887bce702c38260c9eb4d2a90",
+      "bytes": 4564,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0.625,
+          -1
+        ],
+        "maximum": [
+          1,
+          1.75,
+          0
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    },
+    {
+      "id": "hull.slope1.wing",
+      "path": "res://Assets/Frontend/hull.slope1.wing.glb",
+      "sourceRepository": "https://github.com/Dastari/sidereal_spacetime",
+      "sourcePath": "assets/runtime/ship-kit/r002/hull.slope1.wing.glb",
+      "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+      "sha256": "4ba2f18f078acf67e408c1dc06eb9e29b93ce3e1857ea6a90abcc3e0f1824191",
+      "bytes": 4752,
+      "units": "metres",
+      "visualStatus": "Existing published runtime art reused unchanged; final artistic sign-off is not implied.",
+      "geometryBoundsM": {
+        "minimum": [
+          0,
+          0.625,
+          -0.9915147423744202
+        ],
+        "maximum": [
+          0.9915147423744202,
+          1.75,
+          0.032105784863233566
+        ]
+      },
+      "externalResources": false,
+      "frame": "glTF: +Y up, -Z forward; use native transform without rescaling"
+    }
+  ],
+  "importedEmbeddedTextures": [
+    {
+      "path": "res://Assets/Frontend/native-deck-kit_normal.png",
+      "sha256": "a6d69d52e92a98fedee3d246f19dd6be8584ac60f4be58b9c0611bf808521e64",
+      "bytes": 41678,
+      "sourceEmbeddedImage": "normal",
+      "sourceAsset": "res://Assets/Frontend/native-deck-kit.glb",
+      "status": "Exact embedded PNG extracted by Godot import; no new image art or transformation."
+    },
+    {
+      "path": "res://Assets/Frontend/native-deck-kit_orm.png",
+      "sha256": "21e4bd1d680592b3b460d4925b4be59f0e1e9e22ee3660da3a0545c49d08444c",
+      "bytes": 134950,
+      "sourceEmbeddedImage": "orm",
+      "sourceAsset": "res://Assets/Frontend/native-deck-kit.glb",
+      "status": "Exact embedded PNG extracted by Godot import; no new image art or transformation."
+    },
+    {
+      "path": "res://Assets/Frontend/native-deck-kit_basecolor.png",
+      "sha256": "2e6c69cf27ab2f98876e1f09096ce19b662fa7e64ff9ebbba76819b0cceb9f98",
+      "bytes": 20387,
+      "sourceEmbeddedImage": "basecolor",
+      "sourceAsset": "res://Assets/Frontend/native-deck-kit.glb",
+      "status": "Exact embedded PNG extracted by Godot import; no new image art or transformation."
+    }
+  ],
+  "assetPayloadBytes": 2665376,
+  "checkedInPayloadBytesIncludingExtractedTextures": 2862391
+}

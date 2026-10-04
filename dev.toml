@@ -1,0 +1,13 @@
+[project]
+database = "sidereal-spacetime-dev"
+
+[server]
+host = "127.0.0.1"
+port = 3100
+
+[godot]
+download_port = 5186
+download_https_port = 8446
+game_https_port = 8447
+smoke_port = 3131
+test_https_port = 8448

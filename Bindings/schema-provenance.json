@@ -1,0 +1,8 @@
+{
+  "format": "RawModuleDefV10",
+  "bytes": 311420,
+  "sourceSha256": "30a574977df8e4a14d0908213576156d525ac7b0cee0473d4891d5071c672815",
+  "schemaSha256": "47caa3cb9b40bd31d67c9b5106f157eaef6adc0bcc9a7161131bb9a2bf70494c",
+  "generator": "SpacetimeDB CLI 2.10.0",
+  "source": "deployed backend schema (metadata only; no database rows)"
+}

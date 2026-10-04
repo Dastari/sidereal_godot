@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "SpacetimeDB.ClientSDK": {
+        "type": "Direct",
+        "requested": "[2.10.0, )",
+        "resolved": "2.10.0",
+        "contentHash": "9f2gKmkfw2ZcaFDDoLNuHBSPYVCfIwKaj8WkJ3K4GCkJNtviS8/GFvWJ6lcBC3TpSwi/yH7utqxiVQdKINpMiw==",
+        "dependencies": {
+          "SpacetimeDB.BSATN.Runtime": "2.10.0"
+        }
+      },
+      "SpacetimeDB.BSATN.Runtime": {
+        "type": "Transitive",
+        "resolved": "2.10.0",
+        "contentHash": "cb7Otkrqg5416Js9SIGhUH7D0nydp5wABvvVBfX9Da8BMhnPBZEJ8c5q5rrbCe0U1bbmXwuGlnfw0srIIa1K8Q=="
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidereal native client</title>
+<style>
+:root{color-scheme:dark;--space:#07121e;--well:#142936;--line:#345360;--ink:#d9e7e8;--glass:#71d0c1;--amber:#e0b779}
+*{box-sizing:border-box}body{margin:0;background:var(--space);color:var(--ink);font:18px/1.55 'Segoe UI',sans-serif}main{max-width:980px;margin:auto;padding:70px 32px}header{border-bottom:1px solid var(--line);padding-bottom:25px;margin-bottom:45px}h1{font-weight:500;letter-spacing:-.045em;font-size:clamp(42px,8vw,76px);line-height:1.05;margin:0 0 24px}p{max-width:660px}a{color:var(--glass)}.download{display:inline-block;background:var(--glass);color:var(--space);padding:15px 24px;margin:12px 0;font-weight:600;text-decoration:none}.download:hover,.download:focus-visible{background:var(--ink);outline:3px solid var(--line)}h2{font-size:24px;font-weight:500;margin-top:38px}li{margin:12px 0}.state{color:var(--amber)}.resources{display:flex;flex-wrap:wrap;gap:24px;border-top:1px solid var(--line);margin-top:40px;padding-top:24px}code{background:var(--well);padding:3px 6px;font-size:15px}
+</style>
+<main>
+<header><h1>Sidereal, in Godot.</h1><p>A native client connected to the same authoritative world. Your server and database remain on Sidereal; this build runs locally on Windows.</p></header>
+<a class="download" href="Sidereal-windows-x64.zip">Download for Windows x64</a>
+<p class="state">Native evaluation 0.2.0. Includes Dastari sign-in, character entry, server-validated movement, Tetris inventory, equipment, five item hotbar slots and tooltips. Shared windows resize and move; colors, transparency and scale are configurable. Login and crew selection render an interim 3D hangar. Replacement character art, full shared-space presentation and asset streaming remain in development.</p>
+<h2>Run on Windows</h2>
+<ol>
+<li>Connect Tailscale using the account that has access to the Sidereal server.</li>
+<li>Download the ZIP, then use <strong>Extract all</strong>. Keep every extracted file and folder together.</li>
+<li>Open <strong>Sidereal.exe</strong>. The exported game includes its runtime; you do not need to install Godot or .NET.</li>
+<li>Select <strong>Sign in with Dastari</strong>, complete sign-in in your browser, then return to the game and select <strong>Resume character</strong> or <strong>Enter world</strong>.</li>
+<li>Use <strong>WASD</strong> to take control and move or pilot. Shift sprints, E uses a nearby pilot station and Escape releases control.</li>
+<li>Open <strong>Inventory</strong> or <strong>Character</strong> from the top bar. Drag items, press R while dragging to rotate, and use 1–5 for item hotbar actions. The <strong>Interface</strong> window controls theme and layout.</li>
+</ol>
+<p>Use the same Dastari account as the browser game to retain your character. Taking control transfers input between clients on that account. Windows execution and GPU performance still need verification on your machine.</p>
+<h2>Edit the project</h2>
+<p>For ongoing development, clone <a href="https://github.com/Dastari/sidereal_godot/tree/feat/native-spacetimedb-client">Dastari/sidereal_godot</a> and check out <code>feat/native-spacetimedb-client</code>. Install <a href="https://godotengine.org/download/archive/4.7.2-stable/">Godot 4.7.2 .NET</a> and <a href="https://dotnet.microsoft.com/en-us/download/dotnet/8.0">.NET SDK 8.0.425</a>, then import the root <code>project.godot</code>. The standard Godot build cannot compile this C# client.</p>
+<p>The source ZIP below is also available for a one-off download. It contains <code>Sidereal/project.godot</code>. Use Git for exchanging AI changes and editor work; save and commit local work before pulling.</p>
+<p>The Toby-Legion agent can use the <a href="https://wiki.sidereal.dastari.net/Operations/Godot%20Windows%20Development%20and%20Tailscale%20Testing">Windows/Tailscale test runbook</a> and <a href="client-settings.network-test.json">isolated test configuration</a> to verify real sign-in and reducers from Windows.</p>
+<nav class="resources" aria-label="Additional downloads">
+<a href="Sidereal-Godot-Source.zip">Godot project source</a>
+<a href="Sidereal-linux-x64.zip">Linux x64 build</a>
+<a href="SHA256SUMS.txt">Download checksums</a>
+<a href="https://wiki.sidereal.dastari.net/Architecture/Godot%20Frontend%20Evaluation">Migration investigation and setup</a>
+</nav>
+</main>
+</html>

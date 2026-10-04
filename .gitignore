@@ -1,0 +1,13 @@
+.godot/
+.tools/
+.runtime/
+output/
+**/bin/
+**/obj/
+__pycache__/
+*.user
+*.local.json
+client-settings.network-test.json
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+name: Native Godot client
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.425'
+      - run: dotnet restore Sidereal.Godot.csproj --locked-mode
+      - run: dotnet build Sidereal.Godot.csproj --no-restore
+      - run: dotnet restore Tests/Tests.csproj --locked-mode
+      - run: dotnet run --project Tests/Tests.csproj --no-restore
