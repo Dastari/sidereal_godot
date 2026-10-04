@@ -10,6 +10,10 @@
     <Compile Include="../ClientCore.cs" Link="ClientCore.cs" />
     <Compile Include="../NativeAuth.cs" Link="NativeAuth.cs" />
     <Compile Include="../InventoryModel.cs" Link="InventoryModel.cs" />
+    <Compile Include="../Presentation/ReplicatedWorldCatalog.cs" Link="ReplicatedWorldCatalog.cs" />
+    <Compile Include="../Presentation/ReplicatedWorldSurface.cs" Link="ReplicatedWorldSurface.cs" />
+    <Content Include="../Assets/World/manifest.json" Link="world-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/World/surface-golden.json" Link="surface-golden.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../InventoryUi/item-seed-v1.json" Link="item-seed-v1.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../Bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

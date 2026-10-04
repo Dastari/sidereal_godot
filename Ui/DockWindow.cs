@@ -57,11 +57,8 @@ public partial class DockWindow : Control
     public override void _Draw()
     {
         var p = SiderealPalette.Current; if (p == null) return;
-        var w = Size.X; var h = Size.Y; const float c = 11;
-        var points = new[] { new Vector2(c, 0), new Vector2(w - c, 0), new Vector2(w, c), new Vector2(w, h - c), new Vector2(w - c, h), new Vector2(c, h), new Vector2(0, h - c), new Vector2(0, c) };
-        DrawColoredPolygon(points, new Color(p.Surface, p.Opacity));
-        var line = new Vector2[9]; points.CopyTo(line, 0); line[8] = points[0];
-        DrawPolyline(line, p.Accent.Darkened(0.22f), 1.3f, true);
+        var w = Size.X; var h = Size.Y;
+        SciFiFrameStyle.Paint(GetCanvasItem(), new Rect2(Vector2.Zero, Size), new Color(p.Surface, p.Opacity), p.Accent.Darkened(.45f), p.Accent, 12);
         DrawLine(new Vector2(14, 48), new Vector2(w - 14, 48), p.Accent.Darkened(0.55f), 1);
         DrawLine(new Vector2(w - 17, h - 8), new Vector2(w - 8, h - 17), p.Muted, 1.4f, true);
         DrawLine(new Vector2(w - 23, h - 8), new Vector2(w - 8, h - 23), p.Muted.Darkened(0.3f), 1, true);
@@ -128,10 +125,13 @@ public partial class DockWindow : Control
 
     public void Clamp()
     {
-        var area = GetParent<Control>().Size;
+        var parent = GetParent<Control>();
+        var bounds = parent is SiderealUi ui ? ui.WindowBounds : new Rect2(Vector2.Zero, parent.Size);
+        var area = bounds.Size;
         if (area.X < 1 || area.Y < 1) return;
         Size = new Vector2(Mathf.Clamp(Size.X, Math.Min(minimum.X, area.X), area.X), Mathf.Clamp(Size.Y, Math.Min(minimum.Y, area.Y), area.Y));
-        Position = new Vector2(Mathf.Clamp(Position.X, 0, Math.Max(0, area.X - Size.X)), Mathf.Clamp(Position.Y, 0, Math.Max(0, area.Y - Size.Y)));
+        Position = new Vector2(Mathf.Clamp(Position.X, bounds.Position.X, Math.Max(bounds.Position.X, bounds.End.X - Size.X)),
+            Mathf.Clamp(Position.Y, bounds.Position.Y, Math.Max(bounds.Position.Y, bounds.End.Y - Size.Y)));
     }
 
     public void ResetLayout() { Position = InitialPosition; Size = InitialSize; Clamp(); SaveLayout(); }

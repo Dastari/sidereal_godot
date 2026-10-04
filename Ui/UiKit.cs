@@ -21,13 +21,13 @@ public static class UiKit
 
     public static Button Button(string text, Action action)
     {
-        var button = new Button { Text = text, CustomMinimumSize = new Vector2(0, 42), MouseDefaultCursorShape = Control.CursorShape.PointingHand };
+        var button = new Button { Text = text, CustomMinimumSize = new Vector2(0, 44), AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseDefaultCursorShape = Control.CursorShape.PointingHand };
         button.Pressed += () => { action(); button.ReleaseFocus(); }; return button;
     }
 
-    public static PanelContainer Panel(Control content, float padding = 14)
+    public static PanelContainer Panel(Control content, float padding = 14, string variation = "")
     {
-        var panel = new PanelContainer();
+        var panel = new PanelContainer { ThemeTypeVariation = variation };
         var inset = new MarginContainer();
         foreach (var edge in new[] { "left", "right", "top", "bottom" }) inset.AddThemeConstantOverride("margin_" + edge, (int)padding);
         panel.AddChild(inset); inset.AddChild(content); return panel;

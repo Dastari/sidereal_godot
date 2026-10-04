@@ -1,4 +1,4 @@
-"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.2.0)."""
+"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.3.0)."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import urllib.parse
 import urllib.request
@@ -190,6 +191,7 @@ def test(managed, smoke=False, module=None, module_sha256=None, operator_config=
 
 
 def build():
+    execute([sys.executable, ROOT / 'scripts/godot_world_assets.py', '--verify'])
     execute([DOTNET, 'restore', 'Sidereal.Godot.csproj', '--locked-mode'])
     execute([DOTNET, 'build', 'Sidereal.Godot.csproj', '--no-restore'])
     execute([GODOT, '--headless', '--path', PROJECT, '--editor', '--import'])

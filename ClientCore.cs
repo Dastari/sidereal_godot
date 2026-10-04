@@ -15,6 +15,8 @@ namespace Sidereal.Native;
 
 public sealed record ClientSettings(string GameOrigin, string Database, string Issuer, string ClientId, int CallbackPort)
 {
+    public bool IsIsolatedFixture => Database.EndsWith("-smoke", StringComparison.Ordinal) &&
+        GameOrigin.TrimEnd('/') is "http://127.0.0.1:3131" or "https://sidereal.tail7a58a6.ts.net:8448";
     public static ClientSettings Parse(string json)
     {
         var config = JsonSerializer.Deserialize<ClientSettings>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
@@ -72,6 +74,9 @@ public sealed class ClientCore : IDisposable
     public AuthoredFlightStatus? Flight => Connection?.Db.OwnAuthoredFlights.Iter().FirstOrDefault(f => f.ShipId == Character?.ShipId);
     public OwnConstructionSeatStatus? Seat => Connection?.Db.OwnConstructionSeat.Iter().FirstOrDefault();
     public Station? Station => Connection?.Db.OwnStations.Iter().FirstOrDefault(s => s.ShipId == Character?.ShipId);
+    public CharacterVitalsStatus? Vitals => Connection?.Db.OwnCharacterVitals.Iter().FirstOrDefault(v => v.CharacterId == Character?.Id);
+    public ShipPowerSummary? Power => Connection?.Db.OwnShipPower.Iter().FirstOrDefault(p => p.ShipId == Character?.ShipId);
+    public CombatStatus? Combat => Connection?.Db.OwnCombat.Iter().FirstOrDefault(c => c.CharacterId == Character?.Id);
     public bool IsPiloting => Character != null && Station?.OccupantId == Character.Id;
     public bool ControlsClaimed => controls;
     public string? DevelopmentToken { get; private set; }
@@ -175,6 +180,7 @@ public sealed class ClientCore : IDisposable
                         "SELECT * FROM own_construction_instances", "SELECT * FROM own_construction_location",
                         "SELECT * FROM own_construction_seat", "SELECT * FROM own_authored_flights",
                         "SELECT * FROM own_interactions", "SELECT * FROM own_inventory_state",
+                        "SELECT * FROM own_character_vitals", "SELECT * FROM own_ship_power", "SELECT * FROM own_combat",
                         "SELECT * FROM own_inventory_items", "SELECT * FROM own_inventory_containers",
                         "SELECT * FROM own_inventory_hotbar", "SELECT * FROM own_item_definition_pins",
                         "SELECT * FROM published_item_definitions"

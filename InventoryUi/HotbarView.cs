@@ -14,7 +14,7 @@ public partial class HotbarView : HBoxContainer
     {
         this.core = core; this.demo = demo;
         InventoryPresentation.EnsureCatalogue();
-        AddThemeConstantOverride("separation", 7);
+        AddThemeConstantOverride("separation", 8);
         slots = new HotbarSlot[5];
         for (byte slot = 0; slot < 5; slot++) { slots[slot] = new HotbarSlot(core, demo, slot); AddChild(slots[slot]); }
         Refresh();
@@ -22,7 +22,10 @@ public partial class HotbarView : HBoxContainer
     public void Refresh() { var snapshot = InventoryPresentation.Read(core, demo); foreach (var slot in slots) slot.Refresh(snapshot); }
     public override void _UnhandledInput(InputEvent input)
     {
-        if (!IsVisibleInTree() || input is not InputEventKey { Pressed: true, Echo: false } key || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit) return;
+        if (!IsVisibleInTree() || input is not InputEventKey { Pressed: true, Echo: false } key ||
+            GetViewport().GuiGetFocusOwner() != null || GetViewport().GuiIsDragging()) return;
+        for (Node? parent = GetParent(); parent != null; parent = parent.GetParent())
+            if (parent is SiderealUi { GameplayShortcutBlocked: true }) return;
         var number = (long)key.Keycode;
         if (number < '1' || number > '5') return;
         var slot = (byte)(number - '1');
@@ -44,7 +47,7 @@ internal partial class HotbarSlot : Control
     public HotbarSlot(ClientCore core, bool demo, byte slot)
     {
         this.core = core; this.demo = demo; this.slot = slot;
-        CustomMinimumSize = new Vector2(76, 64); MouseFilter = MouseFilterEnum.Stop;
+        CustomMinimumSize = new Vector2(64, 64); SizeFlagsHorizontal = SizeFlags.ExpandFill; MouseFilter = MouseFilterEnum.Stop;
         MouseEntered += () => { hover = true; QueueRedraw(); };
         MouseExited += () => { hover = false; QueueRedraw(); };
     }
@@ -73,13 +76,15 @@ internal partial class HotbarSlot : Control
     {
         var p = SiderealPalette.Current; var font = GetThemeFont("font", "Label");
         var color = item != null ? p.Rarity(item.Definition?.Rarity ?? "common") : p.Accent;
-        DrawRect(new Rect2(Vector2.Zero, Size), p.Surface with { A = p.Opacity });
-        DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2), color with { A = hover ? 1 : .52f }, false, hover ? 2 : 1);
-        DrawString(font, new Vector2(7, 16), (slot + 1).ToString(), HorizontalAlignment.Left, -1, 12, p.Accent);
+        var selected = item?.EquipmentSlot.Length > 0;
+        SciFiFrameStyle.Paint(GetCanvasItem(), new Rect2(Vector2.Zero, Size), new Color(hover ? p.Surface.Lightened(.1f) : p.Surface, p.Opacity),
+            color with { A = hover || selected ? 1 : .58f }, selected ? p.Accent : color, 8, selected, hover || selected ? 1.7f : 1);
+        DrawRect(new Rect2(6, 4, 18, 18), p.Surface.Lightened(.12f));
+        DrawString(font, new Vector2(10, 18), (slot + 1).ToString(), HorizontalAlignment.Left, -1, 13, p.Text);
         var icon = item?.Definition?.Category switch { "weapon" => "╱", "medical" => "+", "tool" => "◇", _ => "□" };
-        if (InventoryIcons.Texture(item?.Definition) is { } texture) DrawTextureRect(texture, InventoryIcons.Fit(texture, new Rect2(17, 9, Size.X - 34, 36)), false);
+        if (InventoryIcons.Texture(item?.Definition) is { } texture) DrawTextureRect(texture, InventoryIcons.Fit(texture, new Rect2(14, 12, Size.X - 28, Math.Max(24, Size.Y - 31))), false);
         else DrawString(font, new Vector2(Size.X * .42f, 40), item != null ? icon : "—", HorizontalAlignment.Left, -1, 23, color);
-        DrawString(font, new Vector2(5, 56), InventoryGrid.Fit(font, item?.Name ?? "Empty", Size.X - 10, 10), HorizontalAlignment.Left, Size.X - 10, 10, item != null ? p.Text : p.Muted);
+        DrawString(font, new Vector2(6, Size.Y - 7), InventoryGrid.Fit(font, item?.Name ?? "Assign", Size.X - 12, 12), HorizontalAlignment.Left, Size.X - 12, 12, item != null ? p.Text : p.Muted);
         if (!demo && core.InventoryPending) DrawRect(new Rect2(Vector2.Zero, Size), p.Surface with { A = .4f });
     }
 }

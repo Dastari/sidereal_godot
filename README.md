@@ -4,7 +4,9 @@ Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
 This evaluation client implements Dastari browser sign-in, persistent character entry, replicated
 deck display and server-validated walking/pilot input. Its shared UI includes configurable colors,
 transparency and scale, draggable/resizable windows, Tetris inventory with rotation, equipment slots,
-five item hotbar slots and tooltips. Login/crew selection uses an actual 3D interim hangar scene.
+five item hotbar slots and tooltips. Login/crew selection renders the furnished Wayfarer in a 3D dock.
+Known stock ships use their published authored surfaces and furnishings, matched to the replicated
+construction. The clipped HUD adapts to window size and 75–150% UI scale; open Menu for other panels.
 The paper doll uses a silhouette pending the separately assigned replacement character/armor models.
 Full gameplay/rendering parity and asset streaming remain planned.
 

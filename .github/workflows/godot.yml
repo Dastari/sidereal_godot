@@ -12,6 +12,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.425'
+      - run: python3 scripts/godot_world_assets.py --verify
       - run: dotnet restore Sidereal.Godot.csproj --locked-mode
       - run: dotnet build Sidereal.Godot.csproj --no-restore
       - run: dotnet restore Tests/Tests.csproj --locked-mode

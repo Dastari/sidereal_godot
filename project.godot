@@ -2,14 +2,14 @@ config_version=5
 
 [application]
 config/name="Sidereal Native — Evaluation"
-config/version="0.2.0"
+config/version="0.3.0"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=800
-window/stretch/mode="canvas_items"
+window/stretch/mode="disabled"
 
 [dotnet]
 project/assembly_name="Sidereal.Godot"
@@ -17,4 +17,5 @@ project/assembly_name="Sidereal.Godot"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.027, 0.055, 0.09, 1)
