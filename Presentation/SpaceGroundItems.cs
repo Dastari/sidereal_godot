@@ -61,5 +61,5 @@ public partial class SpaceGroundItems : Node3D
         void Visit(Node node,Transform3D parent){var transform=node is Node3D spatial?parent*spatial.Transform:parent;if(node is MeshInstance3D mesh&&mesh.Mesh!=null){var box=transform*mesh.Mesh.GetAabb();bounds=bounds is { } old?old.Merge(box):box;}foreach(var child in node.GetChildren())Visit(child,transform);}
         Visit(root,Transform3D.Identity);return bounds;
     }
-    private static void Apply(Node node,uint layers,bool shadows){if(node is GeometryInstance3D mesh){mesh.Layers=layers;mesh.CastShadow=shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;}foreach(var child in node.GetChildren())Apply(child,layers,shadows);}
+    private static void Apply(Node node,uint layers,bool shadows){if(node is GeometryInstance3D mesh){SourceLightUnits.SetReceiver(mesh,SourceLightClass.ReferenceSurface,layers,false);mesh.CastShadow=shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;}foreach(var child in node.GetChildren())Apply(child,layers,shadows);}
 }

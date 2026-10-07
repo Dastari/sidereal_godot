@@ -42,6 +42,32 @@ Require(InventoryCatalog.Resolve("compact-pistol", 2, Array.Empty<Sidereal.Bindi
 var pinned = new Sidereal.Bindings.PublishedItemDefinition("item:compact-pistol@2", "item", "compact-pistol", 2, "retired", "{\"id\":\"compact-pistol\",\"name\":\"Pinned pistol\",\"width\":3,\"height\":2,\"massKg\":2}", "test-revision-2");
 Require(InventoryCatalog.Resolve("compact-pistol", 2, new[] { pinned })?.Width == 3, "Retired explicit instance pin failed to resolve");
 Console.WriteLine("Tetris bounds, collision, rotation, self-placement and exact definition revision checks passed.");
+var weaponIds = new[] { "compact-pistol", "heavy-handgun", "carbine", "long-rifle", "pistol", "smg", "compact-carbine", "rifle", "shotgun", "heavy-gun", "beam-rifle", "rail-rifle", "stun-gun", "baton", "grenade" };
+var seedPayload = "{" + string.Join(",", weaponIds.Select(id => JsonSerializer.Serialize(id) + ":" +
+    (PinnedWeaponDefinitions.ResolvePayload(id, 1, Array.Empty<Sidereal.Bindings.PublishedItemDefinition>())?.Payload ?? throw new Exception("Missing source weapon seed " + id)))) + "}";
+Require(Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seedPayload))).ToLowerInvariant() ==
+    "63d6b4c6b0cd376e140a1077796ae4442858ca6f603fccccb462dba434a5e615", "Revision-one weapon balance differs from independent immutable source output");
+foreach (var id in weaponIds)
+{
+    Require(PinnedWeaponDefinitions.ResolvePayload(id, 0, Array.Empty<Sidereal.Bindings.PublishedItemDefinition>()) == null &&
+        PinnedWeaponDefinitions.ResolvePayload(id, 2, Array.Empty<Sidereal.Bindings.PublishedItemDefinition>()) == null, "Weapon fallback guessed zero or newer revision");
+    Require(PinnedWeaponDefinitions.SupportsReload(id, 1, Array.Empty<Sidereal.Bindings.PublishedItemDefinition>()) == (id is not ("baton" or "grenade")), "Exact source manual reload eligibility differs: " + id);
+}
+Require(PinnedWeaponDefinitions.ResolvePayload("unpublished-weapon", 1, Array.Empty<Sidereal.Bindings.PublishedItemDefinition>()) == null, "Unknown source weapon was guessed");
+var publishedWeapon = new Sidereal.Bindings.PublishedItemDefinition("weapon:compact-pistol@1", "weapon", "compact-pistol", 1, "published", "{\"reloadMs\":2400}", "pinned-test");
+foreach (var status in new[] { "published", "retired" })
+{
+    var exact = new Sidereal.Bindings.PublishedItemDefinition(publishedWeapon.DefinitionRef, publishedWeapon.Kind, publishedWeapon.DefinitionId, publishedWeapon.Revision, status, publishedWeapon.PayloadJson, publishedWeapon.Sha256);
+    Require(PinnedWeaponDefinitions.ResolvePayload("compact-pistol", 1, new[] { exact })?.Payload == exact.PayloadJson, "Exact published/retired weapon pin lost precedence");
+}
+foreach (var payload in new[] { "null", "invalid", "{}", "{\"reloadMs\":0}", "{\"reloadMs\":-1}", "{\"reloadMs\":\"1200\"}", "{\"reloadMs\":1e999}" })
+{
+    var malformed = new Sidereal.Bindings.PublishedItemDefinition(publishedWeapon.DefinitionRef, publishedWeapon.Kind, publishedWeapon.DefinitionId, publishedWeapon.Revision, "published", payload, "invalid-" + payload);
+    Require(PinnedWeaponDefinitions.ResolvePayload("compact-pistol", 1, new[] { malformed })?.Payload == payload &&
+        !PinnedWeaponDefinitions.SupportsReload("compact-pistol", 1, new[] { malformed }), "Existing malformed pin was replaced by authored reload eligibility");
+}
+Console.WriteLine("All15 exact source weapon fallback payloads and reload eligibility pass; published/retired pin precedence and malformed/unknown revision refusal pass.");
+
 
 var cargoSnapshot = inventoryDemo with
 {
@@ -384,6 +410,110 @@ using (var goldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext
 }
 
 var worldCatalog = new ReplicatedWorldCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "world-manifest.json")));
+var combatFx = new CombatEffectCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "combat-manifest.json")));
+using (var combatGoldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"combat-golden.json"))))
+{
+    var root=combatGoldens.RootElement;
+    Require(root.GetProperty("sourceCommit").GetString()==CombatEffectCatalog.SourceRevision,"Combat comparison uses a different source revision");
+    void FxNear(double actual,double expected,string field)=>Require(double.IsFinite(actual)&&Math.Abs(actual-expected)<1e-8,"Source combat FX differs: "+field);
+    CombatPoint3 FxPoint(JsonElement p)=>new(p[0].GetDouble(),p[1].GetDouble(),p[2].GetDouble());
+    void FxVector(CombatPoint3 actual,JsonElement expected,string field)
+    {FxNear(actual.X,expected[0].GetDouble(),field+" X");FxNear(actual.Y,expected[1].GetDouble(),field+" Y");FxNear(actual.Z,expected[2].GetDouble(),field+" Z");}
+    foreach(var fixture in root.GetProperty("sampler").EnumerateArray())
+    {
+        var id=fixture.GetProperty("fx").GetString()!;var sample=combatFx.Effect(id)!.Sample(fixture.GetProperty("t").GetDouble());
+        FxVector(sample.Scale,fixture.GetProperty("scale"),id+" sampler scale");
+        FxNear(sample.Opacity,fixture.GetProperty("opacity").GetDouble(),id+" opacity");FxNear(sample.Emissive,fixture.GetProperty("emissive").GetDouble(),id+" emission");
+        Require(sample.Finished==fixture.GetProperty("finished").GetBoolean(),"Combat sampler lifetime differs: "+id);
+    }
+    foreach(var fixture in root.GetProperty("tints").EnumerateArray())
+    {
+        var tint=combatFx.Tint(fixture.GetProperty("item").GetString(),fixture.GetProperty("fx").GetString()!);var expected=fixture.GetProperty("tint");
+        Require(tint.HasValue==(expected.ValueKind!=JsonValueKind.Null),"Source item FX tint availability differs");
+        if(tint.HasValue)FxVector(tint.Value,expected,"item FX tint");
+    }
+    foreach(var fixture in root.GetProperty("timeline").EnumerateArray())
+    {
+        var definition=combatFx.Effect(fixture.GetProperty("fx").GetString()!)!;var from=FxPoint(fixture.GetProperty("from"));
+        var to=fixture.GetProperty("to").ValueKind==JsonValueKind.Null?(CombatPoint3?)null:FxPoint(fixture.GetProperty("to"));
+        double? Optional(string key)=>fixture.GetProperty(key).ValueKind==JsonValueKind.Null?null:fixture.GetProperty(key).GetDouble();
+        var timeline=new CombatFxTimeline(definition,fixture.GetProperty("size").GetDouble(),Optional("lengthM"),to.HasValue?(to.Value-from).Length:null,Optional("holdS"));
+        foreach(var frame in fixture.GetProperty("frames").EnumerateArray())
+        {
+            var sample=timeline.Step(frame.GetProperty("delta").GetDouble());var live=frame.GetProperty("live").GetBoolean();
+            Require(sample.Finished==!live,"Source first-frame hold/render lifetime differs: "+definition.Id);
+            if(!live)continue;
+            FxVector(sample.Scale,frame.GetProperty("scale"),definition.Id+" rendered scale");
+            FxVector(to.HasValue?CombatPoint3.Lerp(from,to.Value,timeline.TravelFraction):from,frame.GetProperty("position"),definition.Id+" travel");
+            foreach(var expected in frame.GetProperty("opacity").EnumerateArray())FxNear(sample.Opacity,expected.GetDouble(),definition.Id+" material opacity");
+            foreach(var expected in frame.GetProperty("emissive").EnumerateArray())FxNear(sample.Emissive,expected.GetDouble(),definition.Id+" material emission");
+        }
+    }
+    var legacyOffsets=Enumerable.Repeat(new CombatPoint3(0,0,0),6).ToArray();
+    foreach(var fixture in root.GetProperty("legacy").EnumerateArray())
+    {
+        var age=fixture.GetProperty("age").GetDouble();var sample=CombatEffectProjection.LegacyImpact(age);
+        var live=fixture.GetProperty("live").GetBoolean();Require(sample.Finished==!live,"Source legacy impact lifetime differs");
+        if(!live)continue;
+        FxNear(sample.Scale,fixture.GetProperty("coreScale").GetDouble(),"legacy impact scale");FxNear(sample.Opacity,fixture.GetProperty("opacity").GetDouble(),"legacy opacity");
+        var at=new CombatPoint3(2,CombatEffectProjection.LegacyImpactHeight,3);var points=fixture.GetProperty("positions");
+        FxVector(at,points[0],"legacy impact height");
+        for(var index=0;index<6;index++)
+        {legacyOffsets[index]+=CombatEffectProjection.SparkVelocity(index)*Math.Clamp(fixture.GetProperty("delta").GetDouble(),0,.1);FxVector(at+legacyOffsets[index],points[index+1],"legacy capped spark");}
+    }
+    foreach(var fixture in root.GetProperty("worldProjection").EnumerateArray())
+    {
+        var ship=fixture.GetProperty("ship");var point=fixture.GetProperty("world");
+        FxVector(CombatEffectProjection.WorldToShip(point[0].GetDouble(),point[1].GetDouble(),fixture.GetProperty("height").GetDouble(),
+            ship.GetProperty("x").GetDouble(),ship.GetProperty("y").GetDouble(),ship.GetProperty("heading").GetDouble()),fixture.GetProperty("expected"),"double-origin world-to-ship combat");
+    }
+    foreach(var fixture in root.GetProperty("rotations").EnumerateArray())
+    {
+        var (axis,angle)=CombatEffectProjection.ForwardRotation(FxPoint(fixture.GetProperty("direction")));
+        var expected=fixture.GetProperty("quaternion");var sine=Math.Sin(angle/2);
+        FxNear(axis.X*sine,expected[0].GetDouble(),"forward rotation quaternion X");FxNear(axis.Y*sine,expected[1].GetDouble(),"forward rotation quaternion Y");
+        FxNear(axis.Z*sine,expected[2].GetDouble(),"forward rotation quaternion Z");FxNear(Math.Cos(angle/2),expected[3].GetDouble(),"forward rotation quaternion W");
+    }
+    var observer=new CombatActionObserver();
+    var action=new CombatActionInput("actor","ship","deck","pistol","rays",7,2,-3,"[[4,3,1],[2,5,0]]",0,0,false,0,4,2);
+    Require(observer.Observe(new[]{action}).Events.Count==0,"Historical combat rows replayed on first disclosure");
+    var changed=observer.Observe(new[]{action with {ShotSequence=8}});
+    Require(changed.Events.Count==1&&changed.Events[0].Kind==CombatVisualEventKind.Shot,"Accepted shot edge did not produce one event");
+    Require(observer.Observe(new[]{action with {ShotSequence=8}}).Events.Count==0,"Unchanged accepted combat row repeated an effect");
+    Require(observer.Observe(Array.Empty<CombatActionInput>()).RemovedActors.SequenceEqual(new[]{"actor"}),"Disclosure loss retained combat actor state");
+    Require(observer.Observe(new[]{action with {ShotSequence=8}}).Events.Count==0,"Redisclosed historical shot was replayed");
+    var shot=CombatEffectProjection.Shot(action,.1875);
+    FxVector(shot.Origin,root.GetProperty("calls")[0].GetProperty("origin"),"source fallback muzzle");
+    FxVector(shot.Direction,root.GetProperty("calls")[0].GetProperty("direction"),"source shot direction");
+    var rays=root.GetProperty("calls")[0].GetProperty("rays");Require(shot.Rays.Count==rays.GetArrayLength(),"Source accepted ray count changed");
+    for(var index=0;index<shot.Rays.Count;index++)
+    {FxVector(shot.Rays[index].End,rays[index].GetProperty("end"),"source shot endpoint");Require(shot.Rays[index].Struck==rays[index].GetProperty("struck").GetBoolean(),"Source impact disclosure changed");}
+    var near=CombatEffectProjection.WorldRenderPoint(1e12+.125,-1e12-.25,1.3,1e12,-1e12);
+    FxNear(near.X,.125,"double-origin combat X");FxNear(near.Z,.25,"double-origin combat Z");
+    Require(CombatEffectProjection.ParsePoints("[[1,2,1],[3,4],[\"5\",6,1]]").Count==1&&CombatEffectProjection.ParsePoints("invalid").Count==0,"Malformed combat rays were presented");
+}
+Console.WriteLine("Source combat FX135 samples/420 tints/15 rendered timelines/5 legacy frames/5 f64 projections/7 rotations and accepted history/disclosure tests passed.");
+foreach(var response in new[] { .6, .9, 1d, 2.4 })
+    Require(Math.Abs(SourceLightUnitsRules.Energy(1.7,response)-1.7*response/Math.PI)<1e-7,"Source directional irradiance conversion differs");
+foreach(var invalid in new[] { -1d, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+{
+    Reject(()=>SourceLightUnitsRules.Energy(invalid,1),"Invalid source intensity reached native light energy");
+    Reject(()=>SourceLightUnitsRules.Energy(1,invalid),"Invalid material direct response reached native light energy");
+    Reject(()=>SourceLightUnitsRules.ManualHexChannelToLinear(invalid),"Invalid manual color override accepted");
+}
+Reject(()=>SourceLightUnitsRules.Energy(double.MaxValue,double.MaxValue),"Overflow light energy accepted");
+Reject(()=>SourceLightUnitsRules.ManualHexChannelToLinear(1.001),"Out-of-range manual color override accepted");
+Require(SourceLightUnitsRules.Energy(0,1)==0&&SourceLightUnitsRules.ManualHexChannelToLinear(0)==0&&
+    SourceLightUnitsRules.ManualHexChannelToLinear(1)==1&&Math.Abs(SourceLightUnitsRules.ManualHexChannelToLinear(.5)-Math.Pow(.5,2.2))<1e-12,"Source manual color power path differs");
+foreach(var role in new[] { "floor", "wall", "hull", "prop" })
+foreach(var slot in new[] { "primary", "secondary", "trim", "dark", "metal", "glass", "emissive" })
+{
+    var legacyInterior=role=="floor"&&(slot is "primary" or "secondary" or "trim" or "dark" or "metal")||
+        role=="wall"&&(slot is "primary" or "secondary" or "trim");
+    Require(SourceLightUnitsRules.ShipDirect(true,role,slot)==.6&&
+        SourceLightUnitsRules.ShipDirect(false,role,slot)==(legacyInterior?.9:.6),"Authored material/legacy clone direct-light class differs: "+role+"/"+slot);
+}
+Console.WriteLine("Source light irradiance, manual-color transform, authored/legacy material classes and finite native range checks passed.");
 var cameraGoldenBytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "camera-golden.json"));
 Require(Convert.ToHexString(SHA256.HashData(cameraGoldenBytes)).ToLowerInvariant() == worldCatalog.Root.GetProperty("cameraGolden").GetProperty("sha256").GetString(),
     "Camera comparison fixture changed without updating its immutable pin");
@@ -639,6 +769,39 @@ var shotDeadline = DateTime.UtcNow.AddSeconds(10);
 while (client.Combat.ShotSequence == beforeShot && DateTime.UtcNow < shotDeadline)
 { foreach (var c in clients) c.Tick(); client.TickGameplay(.02, true, true); Thread.Sleep(20); }
 Require(client.Combat.ShotSequence > beforeShot && Math.Abs(client.Combat.LastShotAngle) < .01, "Short click did not fire after acknowledged clockwise aim");
+var acceptedCombat = client.Connection!.Db.VisibleCombatActions.Iter().FirstOrDefault(row => row.CharacterId == uuid);
+Require(acceptedCombat != null && client.Combat.Energy < client.Combat.Capacity, "Accepted short shot did not disclose a depleted weapon");
+var beforeReload = acceptedCombat!.ReloadSequence;
+Require(client.ReloadWeapon(), "Native R eligibility blocked the exact source pinned/revision-one reload");
+Wait(() => !client.GameplayPending && client.Connection.Db.VisibleCombatActions.Iter().Any(row => row.CharacterId == uuid && row.ReloadSequence > beforeReload), "Accepted reload sequence did not arrive");
+var reloadShot = client.Combat!.ShotSequence;
+client.SetTrigger(true); client.SetTrigger(false);
+var reloadWait = DateTime.UtcNow.AddMilliseconds(400);
+while (DateTime.UtcNow < reloadWait) { foreach (var c in clients) c.Tick(); client.TickGameplay(.02, true, true); Thread.Sleep(10); }
+Require(client.Combat.ShotSequence == reloadShot, "Native short click fired during the accepted reload interval");
+Wait(() => client.Connection.Db.VisibleCombatActions.Iter().First(row => row.CharacterId == uuid).ReloadUntilMicros <= (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()*1000 &&
+    client.Combat.Energy == client.Combat.Capacity, "Accepted reload did not finish/refill the exact weapon");
+Console.WriteLine("Exact source weapon reload dispatch, accepted sequence/refill, and refusal of firing during reload passed over the isolated endpoint.");
+// A real software-rendered frame can exceed the server's 300ms aim lifetime.
+// Preserve a short click through that pause, and prove only server-accepted rows count.
+client.TickGameplay(.02,true,true);client.SetAimAngle(.27);client.SetTrigger(true);client.SetTrigger(false);
+var slowShot=client.Combat!.ShotSequence;
+var slowDeadline=DateTime.UtcNow.AddSeconds(12);
+while(client.Combat.ShotSequence==slowShot && DateTime.UtcNow<slowDeadline)
+{ Thread.Sleep(650);foreach(var c in clients)c.Tick();client.TickGameplay(.65,true,true); }
+if(client.Combat.ShotSequence==slowShot || Math.Abs(client.Combat.LastShotAngle-.27)>=.01)
+{
+    var debugNames=new[]{"aimPending","acceptedAimActive","aimSerial","acceptedAimSerial","lastAimAt","pendingTrigger","triggerHeld","keyboardAllowed","pointerAllowed"};
+    var debug=debugNames.ToDictionary(name=>name,name=>typeof(ClientCore).GetField(name,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)?.GetValue(client));
+    Console.WriteLine(JsonSerializer.Serialize(new {slowAimFailure=true,client.CombatEnabled,client.Alive,client.InteriorView,client.GameplayMessage,client.GameplayEpoch,
+        actualShot=client.Combat.ShotSequence,beforeShot=slowShot,angle=client.Combat.LastShotAngle,client.GameplayPending,client.Status,debug}));
+}
+Require(client.Combat.ShotSequence>slowShot && Math.Abs(client.Combat.LastShotAngle-.27)<.01,
+    "A >300ms native frame lost the short click or fired before refreshed server aim");
+Require(!client.GameplayMessage.Contains("Aim intent expired",StringComparison.Ordinal),"Slow-frame shot reused expired aim");
+Console.WriteLine("650ms network pump intervals preserve a short click and fresh accepted aim/shot without client prediction.");
+
+
 client.CancelGameplayInput(); client.ToggleCombat();
 Console.WriteLine("Explicit drop/pickup preserves item UUID/mass; saved appearance uses real revisions; a short combat click fires after acknowledged aim.");
 if (gameplayProbe) GameplayNetworkProbe.Run(client, Wait);

@@ -539,7 +539,7 @@ public sealed partial class ClientCore
     public void SetTrigger(bool pressed)
     {
         triggerHeld = pressed && CombatAllowed;
-        if (pressed && CombatAllowed) { pendingTrigger = true; triggerWeapon = Combat?.WeaponItemId; }
+        if (pressed && CombatAllowed && !Reloading) { pendingTrigger = true; triggerWeapon = Combat?.WeaponItemId; }
     }
     private bool Reloading => Connection?.Db.VisibleCombatActions.Iter().FirstOrDefault(row => row.CharacterId == Character?.Id)?.ReloadUntilMicros > (ulong)Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) * 1000;
     private bool CanReload
@@ -547,10 +547,10 @@ public sealed partial class ClientCore
         get
         {
             if (Combat is not { } combat || Connection == null) return false;
-            var pin = Connection.Db.OwnItemDefinitionPins.Iter().FirstOrDefault(row => row.ItemId == combat.WeaponItemId);
-            var definition = Connection.Db.PublishedItemDefinitions.Iter().FirstOrDefault(row => row.Kind == "weapon" && row.DefinitionId == combat.WeaponDefinitionId && row.Revision == pin?.WeaponRevision);
-            try { using var document = JsonDocument.Parse(definition?.PayloadJson ?? "null"); return document.RootElement.TryGetProperty("reloadMs", out var reload) && reload.GetDouble() > 0; }
-            catch { return false; }
+            var pin = Connection.Db.OwnItemDefinitionPins.Iter().FirstOrDefault(row =>
+                row.ItemId == combat.WeaponItemId && row.DefinitionId == combat.WeaponDefinitionId);
+            return PinnedWeaponDefinitions.SupportsReload(combat.WeaponDefinitionId, pin?.WeaponRevision ?? 1,
+                Connection.Db.PublishedItemDefinitions.Iter());
         }
     }
     public bool ReloadWeapon()
@@ -559,25 +559,29 @@ public sealed partial class ClientCore
         lastReloadAt = Now;
         return Command("reload", (connection, operation) => connection.Reducers.ReloadWeapon(combat.WeaponItemId, combat.Revision, operation), false);
     }
-    private void SendCombatAim(bool enabled, double angle)
+    private bool SendCombatAim(bool enabled, double angle)
     {
-        if (active == null || Connection == null) return;
-        if (aimAttempts.Count >= 4) { Stall(active); return; }
+        if (active is not { Failed: false } session || Connection == null) return false;
+        if (aimAttempts.Count >= 4) { Stall(session); return false; }
         var serial = ++aimSerial;
         aimAttempts.Add(new(active, enabled, angle, serial, Now, GameplayEpoch, Combat?.WeaponItemId));
         aimPending = true; aimPreviouslyActive = enabled; lastAimAt = Now;
-        try { Connection.Reducers.SetCombatAim(enabled, angle); } catch { Stall(active); }
+        try { Connection.Reducers.SetCombatAim(enabled, angle); return active == session && !session.Failed; }
+        catch { Stall(session); return false; }
     }
     private void TickCombat()
     {
         var aiming = CombatAllowed && aimAngle.HasValue;
         if (!aiming) { triggerHeld = pendingTrigger = false; triggerWeapon = null; }
+        else if (Reloading) { pendingTrigger = false; triggerWeapon = null; }
         if (Connection == null || active == null) return;
         if (aimAttempts.Any(a => a.Session == active && Now - a.Time > 2))
         { Report("Combat confirmation is delayed. Reconnecting before firing."); Stall(active); return; }
         var angle = aiming ? GameplayRules.WrapAngle(aimAngle!.Value - (Eva != null ? CurrentPresentedShip?.Heading ?? 0 : 0)) : 0;
-        // Acknowledged aim can fire before a routine heartbeat. Sending the heartbeat first
-        // every tenth of a second starves a low-frame-rate client of a firing opportunity.
+        // The browser awaits aim and fires outside its next render frame. Here SDK
+        // receipts are render-pumped: an acknowledged aim may already exceed the
+        // server's 300ms lifetime. Refresh immediately before fire on the same ordered
+        // socket after the acknowledged/current context gate; never fire on send failure.
         var ready = aiming && !aimPending && acceptedAimActive && acceptedAimSerial == aimSerial;
         if (ready && Combat is { } combat && !Reloading && !gameplayCommands.Values.Any(command => command.Kind is "fire" or "reload"))
         {
@@ -588,8 +592,9 @@ public sealed partial class ClientCore
                 if (combat.Energy < combat.ShotCost) ReloadWeapon();
                 else if (combat.WeaponItemId.Length > 0 && Now - lastFireAt >= combat.CooldownMs / 1000d)
                 {
-                    lastFireAt = Now;
-                    Command("fire", (connection, operation) => connection.Reducers.FireWeapon(combat.WeaponItemId, combat.Revision, operation), false);
+                    var session = active;
+                    if (!SendCombatAim(true, angle) || active != session || session.Failed) return;
+                    if (Command("fire", (connection, operation) => connection.Reducers.FireWeapon(combat.WeaponItemId, combat.Revision, operation), false)) lastFireAt = Now;
                 }
             }
         }

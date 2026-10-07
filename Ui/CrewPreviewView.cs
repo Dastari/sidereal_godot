@@ -26,11 +26,13 @@ public partial class CrewPreviewView : SubViewportContainer
     {
         viewport=new SubViewport {TransparentBg=true,OwnWorld3D=true,Size=new Vector2I(256,512),RenderTargetUpdateMode=SubViewport.UpdateMode.WhenParentVisible};AddChild(viewport);
         var root=new Node3D();viewport.AddChild(root);model=CrewPresenter.CreatePreview(core,1);root.AddChild(model);
-        camera=new Camera3D {Projection=Camera3D.ProjectionType.Orthogonal,Size=2.3f,Position=new Vector3(2.5f,1.4f,3.8f),Current=true,
+        camera=new Camera3D {Projection=Camera3D.ProjectionType.Orthogonal,Size=2.3f,Position=new Vector3(2.5f,1.4f,3.8f),Current=true,CullMask=SourceLightUnits.CameraMask(1),
             Environment=new Godot.Environment {BackgroundMode=Godot.Environment.BGMode.ClearColor,AmbientLightSource=Godot.Environment.AmbientSource.Color,AmbientLightColor=new Color(.85f,.91f,1),AmbientLightEnergy=.6f,TonemapMode=Godot.Environment.ToneMapper.Filmic,TonemapExposure=1}};
         root.AddChild(camera);camera.LookAt(new Vector3(0,.9f,0));
-        var key=new DirectionalLight3D {RotationDegrees=new Vector3(-45,-35,0),LightColor=new Color(.85f,.94f,1),LightEnergy=1.4f,ShadowEnabled=false};root.AddChild(key);
-        root.AddChild(new DirectionalLight3D {RotationDegrees=new Vector3(-30,140,0),LightColor=new Color(.72f,.8f,1),LightEnergy=.65f,ShadowEnabled=false});
+        var key=new DirectionalLight3D {RotationDegrees=new Vector3(-45,-35,0),ShadowEnabled=false};
+        SourceLightUnits.Apply(key,1.4,new Color(.85f,.94f,1),1,SourceLightUnits.Crew,1);root.AddChild(key);
+        var fill=new DirectionalLight3D {RotationDegrees=new Vector3(-30,140,0),ShadowEnabled=false};
+        SourceLightUnits.Apply(fill,.65,new Color(.72f,.8f,1),1,SourceLightUnits.Crew,1);root.AddChild(fill);
         UpdateCamera();
     }
     private CrewAppearanceView Appearance()

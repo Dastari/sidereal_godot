@@ -19,7 +19,7 @@ public partial class ReplicatedWorld : Node3D
     private SpaceExhaust ownExhaust = null!;
     private CrewPresenter crew = null!;
     private SpaceGroundItems ground = null!;
-    private DirectionalLight3D key = null!, rim = null!;
+    private SourceLightUnitsRig lighting = null!;
     private string? layoutKey;
     private bool preview, framed, interior = true, cameraChanged;
     private Rect2 requestedPresentationBounds;
@@ -54,23 +54,22 @@ public partial class ReplicatedWorld : Node3D
     public double StandingElevation => standingElevation;
     public double PresentationElapsed => elapsed;
     public string[] VistaIds => space?.VistaIds ?? Array.Empty<string>();
-    public string GraphicsStatus => $"{RenderingServer.GetCurrentRenderingMethod()} / {RenderingServer.GetCurrentRenderingDriverName()} · {(preferences.Antialiasing == "off" ? "AA off" : $"MSAA {preferences.MsaaSamples}×")} · {preferences.RenderScale:P0} render scale · authored lights {assembly?.EffectiveLocalLights??0}/{(RenderingServer.GetCurrentRenderingMethod()=="gl_compatibility"?8:32)} active · glow {(Camera.Environment?.GlowEnabled==true?"on":"off")}";
+    public string GraphicsStatus => $"{RenderingServer.GetCurrentRenderingMethod()} / {RenderingServer.GetCurrentRenderingDriverName()} · {(preferences.Antialiasing == "off" ? "AA off" : $"MSAA {preferences.MsaaSamples}×")} · {preferences.RenderScale:P0} render scale · authored sockets {assembly?.EffectiveLocalLights??0}/{(RenderingServer.GetCurrentRenderingMethod()=="gl_compatibility"?8:32)} active · source keys/rims 7/{SourceLightUnits.DirectionalLimit} · glow {(Camera.Environment?.GlowEnabled==true?"on":"off")}";
     public SpaceEnvironment Space => space;
-    public object SpaceFacts => new { bodies = space.RenderedBodyCount, retainedBodies = space.RetainedBodyCount, asteroids = space.AsteroidCount, stars = 8192, remoteShips = remote.RepresentedCount, fullRemoteShips = remote.FullCount, ownJets = ownExhaust.LitCount, readyCrew = crew.ReadyCount, pendingCrew = crew.PendingCount, unsupportedCrew = crew.UnsupportedCount, observedBody = ObservedBodyId, interior, vista = space.ActiveVista, cameraAlpha = alpha, cameraBeta = beta, initialDeckHalfExtent=initialDeckZoom, initialFlightHalfExtent=initialFlightZoom, displayedDeckHalfExtent=shownDeckZoom, displayedFlightHalfExtent=shownFlightZoom, frameCenterX=assembly?.CameraFrame.CenterX, frameCenterY=assembly?.CameraFrame.CenterY, fovRadians = SpaceMath.FieldOfView, originX = RenderOriginX, originY = RenderOriginY, cameraNear=Camera.Near, cameraFar=Camera.Far, renderer=RenderingServer.GetCurrentRenderingMethod(), driver=RenderingServer.GetCurrentRenderingDriverName(), glow=Camera.Environment?.GlowEnabled };
+    public CombatBodyAnchor? CombatBody(string id)=>crew.CombatAnchor(id);
+    public object SpaceFacts => new { bodies = space.RenderedBodyCount, retainedBodies = space.RetainedBodyCount, asteroids = space.AsteroidCount, stars = 8192, remoteShips = remote.RepresentedCount, fullRemoteShips = remote.FullCount, ownJets = ownExhaust.LitCount, readyCrew = crew.ReadyCount, pendingCrew = crew.PendingCount, unsupportedCrew = crew.UnsupportedCount, observedBody = ObservedBodyId, interior, vista = space.ActiveVista, cameraAlpha = alpha, cameraBeta = beta, initialDeckHalfExtent=initialDeckZoom, initialFlightHalfExtent=initialFlightZoom, displayedDeckHalfExtent=shownDeckZoom, displayedFlightHalfExtent=shownFlightZoom, frameCenterX=assembly?.CameraFrame.CenterX, frameCenterY=assembly?.CameraFrame.CenterY, fovRadians = SpaceMath.FieldOfView, originX = RenderOriginX, originY = RenderOriginY, cameraNear=Camera.Near, cameraFar=Camera.Far, renderer=RenderingServer.GetCurrentRenderingMethod(), driver=RenderingServer.GetCurrentRenderingDriverName(), glow=Camera.Environment?.GlowEnabled, lighting=lighting.Facts, authoredSockets=assembly?.EffectiveLocalLights??0,nativePracticalNodes=assembly?.EffectiveNativeLocalLights??0 };
 
     public override void _Ready()
     {
         Name = "ReplicatedWorld"; shipRoot = new Node3D { Name = "ServerShipFrame" }; AddChild(shipRoot);
         var sky = new Sky { SkyMaterial = new PanoramaSkyMaterial { Panorama = GD.Load<Texture2D>(SpaceEnvironment.AssetRoot + "molded-studio.hdr") } };
         Camera = new Camera3D { Name = "GameplayCamera", Projection = Camera3D.ProjectionType.Perspective, Fov = (float)(SpaceMath.FieldOfView * 180 / Math.PI), KeepAspect = Camera3D.KeepAspectEnum.Height,
-            CullMask = WorldLayer, Near = .1f, Far = 1600,
+            CullMask = SourceLightUnits.CameraMask(WorldLayer), Near = .1f, Far = 1600,
             Environment = new Godot.Environment { BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new Color("02050a"), AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color(.84f,.9f,1), AmbientLightEnergy = .35f, ReflectedLightSource = Godot.Environment.ReflectionSource.Sky, Sky = sky,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic, TonemapExposure = .97f } };
         AddChild(Camera);
-        key = new DirectionalLight3D { Name = "AcceptedStellarKey", LightColor = new Color(1,.87f,.61f), LightEnergy = 1.26f, ShadowEnabled = true, DirectionalShadowMaxDistance = 160, Layers = WorldLayer, LightCullMask = WorldLayer };
-        AddChild(key); key.RotationDegrees = new Vector3(-55,-35,0);
-        rim = new DirectionalLight3D { Name = "CameraMoldedRim", LightColor = new Color(.86f,.92f,1), LightEnergy = .8f, ShadowEnabled = false, Layers = WorldLayer, LightCullMask = WorldLayer }; AddChild(rim);
+        lighting = new SourceLightUnitsRig(WorldLayer); AddChild(lighting);
         space = new SpaceEnvironment(WorldLayer); AddChild(space);
         remote = new SpaceRemoteShips(WorldLayer); AddChild(remote);
         ownExhaust = new SpaceExhaust(WorldLayer); shipRoot.AddChild(ownExhaust);
@@ -86,8 +85,7 @@ public partial class ReplicatedWorld : Node3D
         preferences = next.Normalized(); if (Camera == null) return;
         GetViewport().Msaa3D = preferences.Antialiasing == "off" ? Viewport.Msaa.Disabled : preferences.MsaaSamples switch { 2 => Viewport.Msaa.Msaa2X, 8 => Viewport.Msaa.Msaa8X, _ => Viewport.Msaa.Msaa4X };
         GetViewport().Scaling3DScale = (float)preferences.RenderScale;
-        key.Visible = preferences.Lighting; rim.Visible = preferences.Lighting;
-        key.ShadowEnabled = preferences.Shadows;
+        lighting.Sync(new Vector3(-.6f,-1,.45f),-Camera.GlobalBasis.Z,preferences.Lighting,preferences.Shadows,Colors.White);
         Camera.Environment!.AmbientLightEnergy = preferences.Lighting ? .35f : 0;
         Camera.Environment.ReflectedLightSource = preferences.Lighting ? Godot.Environment.ReflectionSource.Sky : Godot.Environment.ReflectionSource.Disabled;
         Camera.Environment.GlowEnabled = preferences.Glow;
@@ -214,8 +212,8 @@ public partial class ReplicatedWorld : Node3D
         ground.Sync(core,shipRoot,interior&&!preview,WorldLayer,preferences);
         if (core.Character != null && crew.HasReady(core.Character.Id)) characterMarker.Visible = false;
         var star = space.AuthorizedBodies.FirstOrDefault(b => b.Appearance == "yellow-main-sequence-r013");
-        var direction = star.Id == null ? new Vector3(-.6f,-1,.45f) : target-new Vector3((float)(star.X-RenderOriginX),(float)star.Height,-(float)(star.Y-RenderOriginY)); if(direction.LengthSquared()>1e-8)key.LookAt(key.Position+direction.Normalized(),Vector3.Up);
-        var forward = -Camera.GlobalBasis.Z; forward.Y = 0; if(forward.LengthSquared()<1e-6)forward=Vector3.Forward; forward=forward.Normalized(); var rimDirection = new Vector3(-forward.X,-.55f,-forward.Z); rim.LookAt(rim.Position+rimDirection,Vector3.Up);
+        var direction = star.Id == null ? new Vector3(-.6f,-1,.45f) : target-new Vector3((float)(star.X-RenderOriginX),(float)star.Height,-(float)(star.Y-RenderOriginY));
+        lighting.Sync(direction,-Camera.GlobalBasis.Z,preferences.Lighting,preferences.Shadows,star.Id==null?Colors.White:new Color(1,.87f,.61f));
         space.BillboardAtmospheres(Camera); framed = true;
         const string unavailable=" · an exact asset pin is unavailable";
         Status=Status.Replace(unavailable,"",StringComparison.Ordinal);

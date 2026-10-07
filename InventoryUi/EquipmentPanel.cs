@@ -71,7 +71,7 @@ internal partial class EquipmentSlot : Control
         QueueRedraw();
     }
     public override bool _CanDropData(Vector2 position, Variant data) => ItemDrag.Payload(data) && ItemDrag.Current is { } drag && drag.Core == core && drag.Demo == demo && !core.InventoryPending && drag.Item.Definition?.EquipSlot == slot;
-    public override GodotObject _MakeCustomTooltip(string forText) => UiKit.Tooltip(item?.Name ?? char.ToUpperInvariant(slot[0]) + slot[1..], item == null ? forText : ItemPresentation.Tooltip(core,item).Split('\n', 2).ElementAtOrDefault(1) ?? "",ItemPresentation.Rarity(item?.Definition));
+    public override GodotObject _MakeCustomTooltip(string forText) => forText.Length==0||!ItemDrag.TooltipsAllowed(this,core)?null!:item==null?UiKit.Tooltip(char.ToUpperInvariant(slot[0])+slot[1..],forText):new ItemTooltip(this,core,item,"Drag to stow · Double-click to stow · Right-click to inspect");
     public override void _DropData(Vector2 position, Variant data)
     {
         if (!_CanDropData(position, data) || ItemDrag.Current is not { } drag) return;

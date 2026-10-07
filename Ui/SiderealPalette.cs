@@ -12,6 +12,7 @@ public partial class SiderealPalette : Resource
     [Export] public Color Text { get; set; } = new("eff6ff");
     [Export] public Color Muted { get; set; } = new("a7c5e8");
     [Export] public Color Danger { get; set; } = new("ff8eaa");
+    [Export] public Color Health { get; set; } = new("ff456a");
     [Export] public Color Success { get; set; } = new("74dcbb");
     [Export] public Color Warning { get; set; } = new("ffd26d");
     [Export] public Color Common { get; set; } = new("9db5d0");
@@ -33,7 +34,7 @@ public partial class SiderealPalette : Resource
 
     public static SiderealPalette LoadProfile()
     {
-        Current = ResourceLoader.Load<SiderealPalette>("res://Ui/default_palette.tres") ?? new SiderealPalette();
+        Current = ResourceLoader.Load<SiderealPalette>("res://Ui/default_palette.tres")?.Duplicate() as SiderealPalette ?? new SiderealPalette();
         var profile = new ConfigFile();
         if (profile.Load("user://ui-theme.cfg") == Error.Ok)
         {
@@ -42,6 +43,9 @@ public partial class SiderealPalette : Resource
             Current.Text = ReadColor(profile, "text", Current.Text);
             Current.Muted = ReadColor(profile, "muted", Current.Muted);
             Current.Danger = ReadColor(profile, "danger", Current.Danger);
+            // Older profiles used Danger for health. Retain an explicitly changed
+            // danger colour, while default profiles adopt the source vital colour.
+            Current.Health = ReadColor(profile, "health", Current.Danger != new Color("ff8eaa") ? Current.Danger : Current.Health);
             Current.Success = ReadColor(profile, "success", Current.Success);
             Current.Warning = ReadColor(profile, "warning", Current.Warning);
             Current.Rare = ReadColor(profile, "rare", Current.Rare);
@@ -74,6 +78,7 @@ public partial class SiderealPalette : Resource
         file.SetValue("theme", "surface", Surface); file.SetValue("theme", "accent", Accent);
         file.SetValue("theme", "text", Text); file.SetValue("theme", "muted", Muted);
         file.SetValue("theme", "danger", Danger); file.SetValue("theme", "success", Success);
+        file.SetValue("theme", "health", Health);
         file.SetValue("theme", "warning", Warning); file.SetValue("theme", "rare", Rare); file.SetValue("theme", "epic", Epic);
         file.SetValue("theme", "common", Common); file.SetValue("theme", "uncommon", Uncommon); file.SetValue("theme", "legendary", Legendary);
         file.SetValue("theme", "opacity", Opacity); file.SetValue("theme", "scale", UiScale);
@@ -90,6 +95,7 @@ public partial class SiderealPalette : Resource
         theme.SetTypeVariation("MutedLabel", "Label");
         theme.SetTypeVariation("WarningLabel", "Label");
         theme.SetTypeVariation("DangerHeading", "Heading");
+        theme.SetTypeVariation("HealthBar", "ProgressBar");
         theme.SetTypeVariation("FramePanel", "PanelContainer");
         theme.SetTypeVariation("CompactFramePanel", "PanelContainer");
         theme.SetTypeVariation("ActionBarPanel", "PanelContainer");
@@ -150,6 +156,7 @@ public partial class SiderealPalette : Resource
         theme.SetStylebox("focus", "CompactInput", Frame(Surface.Darkened(.1f), Accent, 6, 6, false));
         theme.SetStylebox("background", "ProgressBar", Box(Surface.Darkened(0.2f), Accent.Darkened(0.6f), 0));
         theme.SetStylebox("fill", "ProgressBar", Box(Accent, Accent, 0));
+        theme.SetStylebox("fill", "HealthBar", Box(Health, Health, 0));
         theme.SetStylebox("slider", "HSlider", Box(Surface.Darkened(0.25f), Accent.Darkened(0.6f), 0));
         theme.SetStylebox("grabber_area", "HSlider", Box(Accent.Darkened(0.45f), Accent.Darkened(0.2f), 0));
         theme.SetStylebox("grabber_area_highlight", "HSlider", Box(Accent.Darkened(0.2f), Accent, 0));

@@ -26,7 +26,8 @@ public partial class ReplicatedWorldAssembly : Node3D
     private NativePreferencesSnapshot preferences = new();
     private readonly List<(string Id, string Role, Transform3D Transform, Vector3[] Vertices, int[] Indices, Aabb Bounds, string View, string Side)> pickGeometry = new();
     public readonly record struct Hit(string PlacementId, string Role, Vector3 LocalPoint, float Distance);
-    public int EffectiveLocalLights => lightPool.Count(l => l.Visible);
+    public int EffectiveLocalLights => lightPool.Count(l => l.Visible) / 2;
+    public int EffectiveNativeLocalLights => lightPool.Count(l => l.Visible);
     private Aabb bounds;
     private bool hasBounds;
     private bool currentCutaway;
@@ -156,8 +157,12 @@ public partial class ReplicatedWorldAssembly : Node3D
                 var baked = BakeMeshes(mesh, local, placements, entries, entry);
                 if (baked.GetSurfaceCount() != 0)
                 {
-                    var clippedBatch = new MeshInstance3D { Name = "BrowserAuthoredProfileBatch", Mesh = baked, Layers = layers };
-                    AddChild(clippedBatch); banks.Add((clippedBatch, entry.GetProperty("view").GetString()!, OcclusionSide(entry)));
+                    foreach (var cohort in ReceiverMeshes(baked))
+                    {
+                        var clippedBatch = new MeshInstance3D { Name = "BrowserAuthoredProfileBatch", Mesh = cohort.Mesh };
+                        SourceLightUnits.SetReceiver(clippedBatch,cohort.Class,layers);
+                        AddChild(clippedBatch); banks.Add((clippedBatch, entry.GetProperty("view").GetString()!, OcclusionSide(entry)));
+                    }
                     var aabb = baked.GetAabb(); bounds = hasBounds ? bounds.Merge(aabb) : aabb; hasBounds = true;
                 }
                 foreach (var child in source.GetChildren()) AddMeshes(child, local, placements, entries, entry);
@@ -169,11 +174,9 @@ public partial class ReplicatedWorldAssembly : Node3D
                 var original = mesh.GetActiveMaterial(index);
                 geometry.SurfaceSetMaterial(index, AdaptMaterial(original, entry));
             }
-            var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = geometry, InstanceCount = placements.Count };
             for (var index = 0; index < placements.Count; index++)
             {
                 var transform = placements[index] * local;
-                multimesh.SetInstanceTransform(index, transform);
                 var aabb = transform * mesh.GetAabb();
                 bounds = hasBounds ? bounds.Merge(aabb) : aabb; hasBounds = true;
                 RecordFramingBounds(aabb, entry);
@@ -183,10 +186,38 @@ public partial class ReplicatedWorldAssembly : Node3D
                     RecordPick(entries[index],transform,channel.Vertices,channel.Indices,aabb);
                 }
             }
-            var batch = new MultiMeshInstance3D { Name = "PublishedMeshBatch", Multimesh = multimesh, Layers = layers };
-            AddChild(batch); banks.Add((batch, entry.GetProperty("view").GetString()!, OcclusionSide(entry)));
+            foreach (var cohort in ReceiverMeshes(geometry))
+            {
+                var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = cohort.Mesh, InstanceCount = placements.Count };
+                for (var index=0;index<placements.Count;index++) multimesh.SetInstanceTransform(index,placements[index]*local);
+                var batch = new MultiMeshInstance3D { Name = "PublishedMeshBatch", Multimesh = multimesh };
+                SourceLightUnits.SetReceiver(batch,cohort.Class,layers);
+                AddChild(batch); banks.Add((batch, entry.GetProperty("view").GetString()!, OcclusionSide(entry)));
+            }
         }
         foreach (var child in source.GetChildren()) AddMeshes(child, local, placements, entries, entry);
+    }
+
+    // Light masks apply to geometry instances, not individual surfaces. Split only
+    // mixed response banks; every source vertex/index/material channel is copied intact.
+    private static IEnumerable<(Mesh Mesh,SourceLightClass Class)> ReceiverMeshes(Mesh source)
+    {
+        SourceLightClass Class(int surface) => source.SurfaceGetMaterial(surface) is { } material &&
+            material.GetMeta("source_direct_intensity",SourceLightUnitsRules.HullDirect).AsDouble()==SourceLightUnitsRules.InteriorDirect
+                ? SourceLightClass.Interior : SourceLightClass.Hull;
+        var groups=Enumerable.Range(0,source.GetSurfaceCount()).GroupBy(Class).ToArray();
+        if(groups.Length==1){yield return(source,groups[0].Key);yield break;}
+        foreach(var group in groups)
+        {
+            var mesh=new ArrayMesh();
+            foreach(var surface in group)
+            {
+                var primitive=source is ArrayMesh array?array.SurfaceGetPrimitiveType(surface):Mesh.PrimitiveType.Triangles;
+                mesh.AddSurfaceFromArrays(primitive,source.SurfaceGetArrays(surface));
+                mesh.SurfaceSetMaterial(mesh.GetSurfaceCount()-1,source.SurfaceGetMaterial(surface));
+            }
+            yield return(mesh,group.Key);
+        }
     }
 
     private ArrayMesh BakeMeshes(MeshInstance3D source, Transform3D local, IReadOnlyList<Transform3D> placements,
@@ -346,6 +377,7 @@ public partial class ReplicatedWorldAssembly : Node3D
             }
         }
         SourceSurfaceFinish.Apply(material,sourceFamily == "plastic-deck" ? "plastic-dark" : sourceFamily ?? SourceSurfaceFinish.ShipFamily(sourceName));
+        material.SetMeta("source_direct_intensity",SourceLightUnitsRules.ShipDirect(authored,role,sourceName));
         materials[key] = material; return material;
     }
 
@@ -371,8 +403,18 @@ public partial class ReplicatedWorldAssembly : Node3D
         if(RenderingServer.GetCurrentRenderingMethod()=="gl_compatibility")budget=Math.Min(budget,8);
         var selected=lightSockets.Where(l=>{var view=l.TryGetProperty("view",out var v)?v.GetString():"deck";return view=="both"||view==(currentCutaway?"deck":"flight");})
             .OrderBy(l=>Vector(l.GetProperty("at")).DistanceSquaredTo(cameraLocal)).ThenBy(l=>l.TryGetProperty("id",out var id)?id.GetString():"",StringComparer.Ordinal).Take(budget).ToArray();
-        while(lightPool.Count<selected.Length) {var light=new OmniLight3D{Name="PublishedPracticalPool",ShadowEnabled=false,Layers=layers,LightCullMask=layers};AddChild(light);lightPool.Add(light);}
-        for(var i=0;i<lightPool.Count;i++) {var light=lightPool[i];light.Visible=i<selected.Length;if(!light.Visible)continue;var socket=selected[i];light.Position=Vector(socket.GetProperty("at"));light.LightColor=Colour(socket.GetProperty("colour"));light.LightEnergy=socket.GetProperty("energy").GetSingle();light.OmniRange=socket.GetProperty("range").GetSingle();}
+        // Two mutually exclusive ship receiver responses per authored socket.
+        // Logical socket budgets remain32/8; each object still receives at most that
+        // many native practical lights. Source point falloff/owner-only receivers
+        // require a separate shader/batching port and are not claimed by this adapter.
+        var cohorts=new[]{SourceLightClass.Hull,SourceLightClass.Interior};
+        while(lightPool.Count<selected.Length*cohorts.Length) {var light=new OmniLight3D{Name="PublishedPracticalPool",ShadowEnabled=false,LightSpecular=0};AddChild(light);lightPool.Add(light);}
+        for(var i=0;i<lightPool.Count;i++) {
+            var light=lightPool[i];light.Visible=i<selected.Length*cohorts.Length;if(!light.Visible)continue;
+            var socket=selected[i/cohorts.Length];var cohort=cohorts[i%cohorts.Length];var colour=socket.GetProperty("colour");
+            SourceLightUnits.Apply(light,socket.GetProperty("energy").GetDouble(),new Color(colour[0].GetSingle(),colour[1].GetSingle(),colour[2].GetSingle()),SourceLightUnits.Direct(cohort),SourceLightUnits.Cohort(cohort),layers);
+            light.Position=Vector(socket.GetProperty("at"));light.OmniRange=socket.GetProperty("range").GetSingle();
+        }
     }
     private void RecordPick(JsonElement entry,Transform3D transform,Vector3[] points,int[] indices,Aabb bounds) { if(!exteriorOnly)pickGeometry.Add((entry.GetProperty("id").GetString()!,entry.GetProperty("role").GetString()!,transform,points,indices,bounds,entry.GetProperty("view").GetString()!,OcclusionSide(entry))); }
     public Hit? Pick(Vector3 localOrigin,Vector3 localDirection)

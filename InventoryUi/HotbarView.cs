@@ -73,7 +73,7 @@ public partial class HotbarView : HBoxContainer
 internal partial class HotbarSlot : Control
 {
     private readonly ClientCore core;private readonly bool demo;private readonly byte slot;private readonly Action inspect;private readonly Action<string> bindQuick;
-    private InventorySnapshot snapshot=InventorySnapshot.Empty;private InventoryItemView? item;private bool hover;
+    private InventorySnapshot snapshot=InventorySnapshot.Empty;private InventoryItemView? item,assignmentItem;private bool hover;
     private bool Reserved=>slot is >=5 and <8;private bool Quick=>slot>=8;
     public HotbarSlot(ClientCore core,bool demo,byte slot,Action inspect,Action<string> bindQuick)
     {
@@ -83,11 +83,11 @@ internal partial class HotbarSlot : Control
     }
     public void Refresh(InventorySnapshot next,string? quick,InventoryItemView? assignment=null)
     {
-        snapshot=next;item=Quick?next.Item(quick??""):next.Hotbar.TryGetValue(slot,out var id)?next.Item(id):null;
+        snapshot=next;assignmentItem=assignment;item=Quick?next.Item(quick??""):next.Hotbar.TryGetValue(slot,out var id)?next.Item(id):null;
         TooltipText=!ItemDrag.TooltipsAllowed(this,core)?"":Reserved?"Reserved action slot. No operation is installed.":assignment!=null&&(Quick||assignment.Definition?.EquipSlot.Length>0)?$"Press {(Quick?(slot==8?9:0):slot+1)} or click to assign {assignment.Name}.":Quick? $"{(slot==8?9:0)}: {item?.Name??"Empty quick slot"}\nClick to inspect in inventory. Drag an item here to assign it.":
             item!=null?ItemPresentation.Tooltip(core,item)+$"\nPress {slot+1} or click to equip. Right-click clears this reference.":$"Action {slot+1}\nDrag an equippable item here.";QueueRedraw();
     }
-    public override GodotObject _MakeCustomTooltip(string text)=>UiKit.Tooltip(item?.Name??(Reserved?"Reserved action":"Unassigned slot"),text,ItemPresentation.Rarity(item?.Definition));
+    public override GodotObject _MakeCustomTooltip(string text)=>text.Length==0||!ItemDrag.TooltipsAllowed(this,core)?null!:assignmentItem!=null&&(Quick||assignmentItem.Definition?.EquipSlot.Length>0)?UiKit.Tooltip("Assign item",text):item==null?UiKit.Tooltip(Reserved?"Reserved action":"Unassigned slot",text):new ItemTooltip(this,core,item,Quick?"Click to inspect · Drag an item here to assign it":$"Press {slot+1} or click to equip · Right-click clears this reference");
     public override bool _CanDropData(Vector2 at,Variant data)=>!Reserved&&ItemDrag.Payload(data)&&ItemDrag.Current is {} drag&&drag.Core==core&&drag.Demo==demo&&!core.InventoryPending&&(Quick||drag.Item.Definition?.EquipSlot.Length>0);
     public override void _DropData(Vector2 at,Variant data)
     { if(!_CanDropData(at,data)||ItemDrag.Current is not {} drag)return;if(Quick)bindQuick(drag.Item.Id);else if(demo)DemoInventory.Assign(slot,drag.Item.Id);else core.AssignHotbar(slot,drag.Item.Id,drag.Revision); }

@@ -23,6 +23,8 @@ public partial class ThemeGallery : Control
         window.Content.AddChild(new CheckBox { Text = "Enabled setting", ButtonPressed = true });
         window.Content.AddChild(new HSlider { MinValue = 0, MaxValue = 100, Value = 62 });
         window.Content.AddChild(new ProgressBar { Value = 62, CustomMinimumSize = new Vector2(0, 20) });
+        var healthLabel=new HBoxContainer();healthLabel.AddChild(new VitalIcon());healthLabel.AddChild(UiKit.Label("Health · sample 62%",14));window.Content.AddChild(healthLabel);
+        window.Content.AddChild(new ProgressBar {ThemeTypeVariation="HealthBar",Value=62,ShowPercentage=false,CustomMinimumSize=new Vector2(0,6)});
         window.Content.AddChild(UiKit.Panel(UiKit.Paragraph("Nested panel\nPanels, buttons, fields and tooltips inherit one Theme resource.", 420), 0));
         window.Content.AddChild(UiKit.Paragraph("Drag the header or any border. The layout stays inside the viewport and is remembered locally.", 420));
     }

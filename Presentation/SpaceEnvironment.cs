@@ -141,8 +141,14 @@ public partial class SpaceEnvironment : Node3D
                 var smokeRequired = !star && level.GetProperty("smoke").ValueKind != JsonValueKind.Null;
                 if (surface != null && (!weatherRequired || weather != null) && (!smokeRequired || smoke != null))
                 {
-                    var next = new Node3D { Name = "ReadyReviewedLod" }; Configure(surface.Instantiate<Node3D>(), next, preferences);
-                    if (weather != null) Configure(weather.Instantiate<Node3D>(), next, preferences); if (smoke != null) Configure(smoke.Instantiate<Node3D>(), next, preferences);
+                    var next = new Node3D { Name = "ReadyReviewedLod" }; Configure(surface.Instantiate<Node3D>(), next, preferences,SourceLightClass.ReferenceSurface);
+                    // The pinned toxic density texture uses referenceMaterial (direct1).
+                    // The other reviewed cloud sheets use the explicit weather direct2.4.
+                    var weatherClass=!star&&descriptor.GetProperty("weatherRole").ValueKind==JsonValueKind.Object&&
+                        descriptor.GetProperty("weatherRole").TryGetProperty("alphaMode",out var alphaMode)&&alphaMode.GetString()=="BLEND"
+                            ? SourceLightClass.ReferenceSurface:SourceLightClass.Weather;
+                    if (weather != null) Configure(weather.Instantiate<Node3D>(), next, preferences,weatherClass);
+                    if (smoke != null) Configure(smoke.Instantiate<Node3D>(), next, preferences,SourceLightClass.ReferenceSurface);
                     if (!star) AddAtmosphere(next, descriptor, preferences.Glow);
                     else SpaceStarEffects.Attach(next,layers,preferences.Glow);
                     entry.Root.AddChild(next); entry.Active?.QueueFree(); entry.Active = next; entry.Lod = lod; entry.PendingFile = null;
@@ -216,10 +222,10 @@ public partial class SpaceEnvironment : Node3D
         if (status is ResourceLoader.ThreadLoadStatus.Failed or ResourceLoader.ThreadLoadStatus.InvalidResource) missing.Add(file);
         return null;
     }
-    private void Configure(Node3D node, Node3D parent, NativePreferencesSnapshot p)
+    private void Configure(Node3D node, Node3D parent, NativePreferencesSnapshot p,SourceLightClass source)
     {
         node.SetMeta("asset_path", node.SceneFilePath.Replace(AssetRoot, "")); parent.AddChild(node);
-        void Visit(Node n) { if (n is MeshInstance3D mesh) { mesh.Layers = layers; mesh.CastShadow = p.Shadows ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off; } foreach (var child in n.GetChildren()) Visit(child); } Visit(node);
+        void Visit(Node n) { if (n is MeshInstance3D mesh) { SourceLightUnits.SetReceiver(mesh,source,layers,false); mesh.CastShadow = p.Shadows ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off; } foreach (var child in n.GetChildren()) Visit(child); } Visit(node);
     }
     private void AddAtmosphere(Node3D parent, JsonElement descriptor, bool enabled)
     {
@@ -239,7 +245,7 @@ public partial class SpaceEnvironment : Node3D
             if (!asteroids.TryGetValue(b.Id, out var node))
             {
                 node = new Node3D { Name="PhysicalAsteroid" }; var original=source.Instantiate<Node3D>();node.AddChild(original);var parts=Meshes(original).Where(m=>m.Mesh!=null).ToArray();if(parts.Length==0){node.Free();continue;}
-                var radius=0f;foreach(var part in parts){part.Layers=layers;part.CastShadow=p.Shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;var transform=Transform3D.Identity;var chain=new Stack<Node3D>();for(var at=(Node?)part;at!=null&&at!=node;at=at.GetParent())if(at is Node3D spatial)chain.Push(spatial);foreach(var spatial in chain)transform*=spatial.Transform;var box=part.Mesh!.GetAabb();for(var i=0;i<8;i++)radius=Math.Max(radius,(transform*box.GetEndpoint(i)).Length());}
+                var radius=0f;foreach(var part in parts){SourceLightUnits.SetReceiver(part,SourceLightClass.ReferenceSurface,layers,false);part.CastShadow=p.Shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;var transform=Transform3D.Identity;var chain=new Stack<Node3D>();for(var at=(Node?)part;at!=null&&at!=node;at=at.GetParent())if(at is Node3D spatial)chain.Push(spatial);foreach(var spatial in chain)transform*=spatial.Transform;var box=part.Mesh!.GetAabb();for(var i=0;i<8;i++)radius=Math.Max(radius,(transform*box.GetEndpoint(i)).Length());}
                 node.SetMeta("source_radius",radius);asteroids[b.Id]=node;node.SetMeta("body_id",b.Id);AddChild(node);
             }
             node.Scale=Vector3.One*(float)(b.Radius/Math.Max(.001,node.GetMeta("source_radius").AsDouble()));node.Position=new Vector3((float)(b.X-x),(float)b.Height,-(float)(b.Y-y));node.Rotation=new Vector3(0,(float)b.Heading,0);

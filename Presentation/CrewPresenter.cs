@@ -16,6 +16,12 @@ public partial class CrewPresenter:Node3D
     private Node3D? shipRoot;private double originX,originY,elevation;private bool interior;private uint layers=1;private ulong epoch;
     public bool ReducedMotion {get;set;}
     public bool HasReady(string characterId)=>entries.TryGetValue(characterId,out var entry)&&entry.Model.Ready&&entry.Model.Visible;
+    public CombatBodyAnchor? CombatAnchor(string characterId)
+    {
+        if(!entries.TryGetValue(characterId,out var entry)||!entry.Model.Ready||!entry.Model.IsVisibleInTree())return null;
+        var position=entry.Model.GlobalPosition;
+        return new(entry.Model.Position.Y,BodyRenderPosition:new(position.X,position.Y,position.Z));
+    }
     public int ReadyCount=>entries.Values.Count(x=>x.Model.Ready);
     public int PendingCount=>entries.Values.Sum(x=>x.Model.PendingCount);
     public int UnsupportedCount=>entries.Values.Sum(x=>x.Model.Unsupported.Length);

@@ -83,5 +83,21 @@ public partial class SpaceRemoteShips : Node3D
         }
         var livePins=ships.Values.Select(e=>$"{e.PrefabId}@r{e.Revision}").ToHashSet();foreach(var pin in prototypes.Keys.Where(pin=>!livePins.Contains(pin)).ToArray()){prototypes[pin].QueueFree();prototypes.Remove(pin);proxies.Remove(pin);}
     }
-    private void Apply(Node node,NativePreferencesSnapshot p){if(node is GeometryInstance3D mesh){mesh.Layers=layers;mesh.CastShadow=p.Shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;}foreach(var child in node.GetChildren())Apply(child,p);}
+    private void Apply(Node node,NativePreferencesSnapshot p)
+    {
+        if(node is GeometryInstance3D mesh)
+        {
+            // Duplicated full assemblies already carry their exact material
+            // receiver and common caster masks. Keep those when placing them in
+            // this viewport; resetting to the visibility bit removes lighting.
+            mesh.Layers |= layers;
+            // Public baked exterior proxies do not carry assembly metadata.
+            // Their source ship response is hull .6; retain imported layers and
+            // add that response without introducing any practical light owner.
+            if(!mesh.HasMeta("source_light_class"))
+                SourceLightUnits.SetReceiver(mesh,SourceLightClass.Hull,mesh.Layers);
+            mesh.CastShadow=p.Shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;
+        }
+        foreach(var child in node.GetChildren())Apply(child,p);
+    }
 }

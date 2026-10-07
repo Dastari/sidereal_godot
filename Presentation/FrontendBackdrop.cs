@@ -51,7 +51,7 @@ public partial class FrontendBackdrop : Node3D
         {
             Name = "PresentationCamera", Position = PresentationCameraPosition,
             Fov = PresentationFieldOfView, Near = 0.1f, Far = 450,
-            CullMask = PresentationLayer, Environment = CreateEnvironment(),
+            CullMask = SourceLightUnits.CameraMask(PresentationLayer), Environment = CreateEnvironment(),
         };
         AddChild(camera);
         camera.LookAt(PresentationCameraTarget, Vector3.Up);
@@ -84,9 +84,10 @@ public partial class FrontendBackdrop : Node3D
         Visit(this);
         var limit = next.LocalLightLimit == "all" ? int.MaxValue : int.Parse(next.LocalLightLimit);
         var locals = lightDefaults.Keys.Where(light => light is OmniLight3D or SpotLight3D)
-            .OrderBy(light => light.GlobalPosition.DistanceSquaredTo(PresentationCameraTarget)).ToArray();
-        for (var i = 0; i < locals.Length; i++)
-            locals[i].LightEnergy = next.Lighting && i < limit ? lightDefaults[locals[i]].Energy : 0;
+            .GroupBy(light => light.HasMeta("native_dock_pool") ? light.GetMeta("native_dock_pool").AsString() : light.Name.ToString())
+            .OrderBy(pool => pool.First().GlobalPosition.DistanceSquaredTo(PresentationCameraTarget)).ThenBy(pool=>pool.Key,StringComparer.Ordinal).ToArray();
+        for (var i = 0; i < locals.Length; i++) foreach(var light in locals[i])
+            light.LightEnergy = next.Lighting && i < limit ? lightDefaults[light].Energy : 0;
         camera.Environment!.AmbientLightEnergy = next.Lighting ? .18f : 1;
         camera.Environment.GlowEnabled = next.Glow;
         camera.Environment.GlowIntensity = .28f;
@@ -190,7 +191,7 @@ public partial class FrontendBackdrop : Node3D
                 if (!level.TryGetProperty(role, out var data) || data.ValueKind != JsonValueKind.Object) continue;
                 var file = data.GetProperty("file").GetString()!;
                 var model = GD.Load<PackedScene>(SpaceEnvironment.AssetRoot + file).Instantiate<Node3D>();
-                ApplyLayers(model); planet.AddChild(model);
+                ApplyLayers(model, role == "weather" ? SourceLightClass.Weather : SourceLightClass.ReferenceSurface, false); planet.AddChild(model);
             }
         }
         var parked = ReplicatedWorld.CreatePreviewAssembly(PresentationLayer, false, "fed.s.wren");
@@ -249,23 +250,13 @@ public partial class FrontendBackdrop : Node3D
 
     private void BuildLighting()
     {
-        AddChild(new DirectionalLight3D
-        {
-            Name = "BayKeyLight", RotationDegrees = new Vector3(-48, -28, 0),
-            LightColor = new Color("f6dcc3"), LightEnergy = 0.7f,
-            Layers = PresentationLayer, LightCullMask = PresentationLayer,
-            ShadowEnabled = true, DirectionalShadowMaxDistance = 80,
-            ShadowCasterMask = PresentationLayer,
-        });
-        AddChild(new DirectionalLight3D
-        {
-            Name = "ApertureFill", RotationDegrees = new Vector3(-32, 150, 0),
-            LightColor = new Color("729fc7"), LightEnergy = 0.22f,
-            Layers = PresentationLayer, LightCullMask = PresentationLayer,
-            ShadowEnabled = false,
-        });
-        // Six local pools stay below Compatibility's default eight omni lights per
-        // mesh. Visible authored emissive fixtures do not require renderer bloom.
+        // This is a native-authored dock composition, not the browser's stellar rig.
+        // Its original directions, colors and source intensities remain fixed;
+        // native units and per-material responses use the common verified adapter.
+        AddDirectional("BayKeyLight", new Vector3(-48,-28,0), "f6dcc3", .7, true);
+        AddDirectional("ApertureFill", new Vector3(-32,150,0), "729fc7", .22, false);
+        // Four masked responses per direction consume the verified eight-key cap.
+        // Each ship object receives two directional and at most six practical lights.
         AddLight("ShipRim", new Vector3(12, 5, -30), "51c8ed", 1.8f, 18);
         AddLight("NearServiceLamp", new Vector3(19, 3, 8), "ffa65b", 1.6f, 9);
         AddLight("CargoServiceLamp", new Vector3(-20, 3, -26), "ffb86c", 1.5f, 10);
@@ -274,12 +265,30 @@ public partial class FrontendBackdrop : Node3D
         AddLight("ApertureRim", new Vector3(-10, 5, -38), "698bde", 0.8f, 14);
     }
 
-    private void AddLight(string name, Vector3 position, string color, float energy, float range) => AddChild(new OmniLight3D
+    private void AddDirectional(string name,Vector3 rotation,string color,double energy,bool shadows)
     {
-        Name = name, Position = position, LightColor = new Color(color), LightEnergy = energy,
-        OmniRange = range, Layers = PresentationLayer,
-        LightCullMask = PresentationLayer, ShadowEnabled = false,
-    });
+        foreach(var response in new[]{SourceLightClass.Hull,SourceLightClass.Interior,SourceLightClass.ReferenceSurface,SourceLightClass.Weather})
+        {
+            var light=new DirectionalLight3D {Name=$"{name}_{response}",RotationDegrees=rotation,
+                ShadowEnabled=shadows&&response!=SourceLightClass.Weather,DirectionalShadowMaxDistance=80};
+            SourceLightUnits.Apply(light,energy,new Color(color).SrgbToLinear(),SourceLightUnits.Direct(response),SourceLightUnits.Cohort(response),PresentationLayer);
+            light.SetMeta("native_authored_dock_composition",true);
+            AddChild(light);
+        }
+    }
+    private void AddLight(string name, Vector3 position, string color, float energy, float range)
+    {
+        // These six work-light pools belong to the native dock composition. They
+        // are intentionally not labeled as placement-owned browser light sockets.
+        foreach(var response in new[]{SourceLightClass.Hull,SourceLightClass.Interior})
+        {
+            var light=new OmniLight3D {Name=$"{name}_{response}",Position=position,OmniRange=range,ShadowEnabled=false};
+            SourceLightUnits.Apply(light,energy,new Color(color).SrgbToLinear(),SourceLightUnits.Direct(response),SourceLightUnits.Cohort(response),PresentationLayer);
+            light.SetMeta("native_authored_dock_composition",true);
+            light.SetMeta("native_dock_pool",name);
+            AddChild(light);
+        }
+    }
 
     private static Transform3D At(float x, float y, float z, float yaw = 0) =>
         new(new Basis(Vector3.Up, yaw), new Vector3(x, y, z));
@@ -303,11 +312,11 @@ public partial class FrontendBackdrop : Node3D
         AddChild(node);
     }
 
-    private static void ApplyLayers(Node node)
+    private static void ApplyLayers(Node node,SourceLightClass response=SourceLightClass.Hull,bool localCaster=true)
     {
-        if (node is VisualInstance3D visual) visual.Layers = PresentationLayer;
-        if (node is Light3D light) light.LightCullMask = PresentationLayer;
-        foreach (var child in node.GetChildren()) ApplyLayers(child);
+        if (node is GeometryInstance3D geometry) SourceLightUnits.SetReceiver(geometry,response,PresentationLayer,localCaster);
+        else if(node is VisualInstance3D visual)visual.Layers=PresentationLayer;
+        foreach (var child in node.GetChildren()) ApplyLayers(child,response,localCaster);
     }
 
     private void AddBatch(string file, IReadOnlyList<Transform3D> placements,
@@ -347,11 +356,11 @@ public partial class FrontendBackdrop : Node3D
                 Mesh = displayMesh, InstanceCount = placements.Count,
             };
             for (var i = 0; i < placements.Count; i++) batch.SetInstanceTransform(i, placements[i] * local);
-            AddChild(new MultiMeshInstance3D
-            {
-                Name = file.Replace('.', '_') + "_batch", Multimesh = batch,
-                Layers = PresentationLayer, MaterialOverride = materialOverride,
-            });
+            var display=new MultiMeshInstance3D {
+                Name = file.Replace('.', '_') + "_batch", Multimesh = batch,MaterialOverride = materialOverride,
+            };
+            SourceLightUnits.SetReceiver(display,SourceLightClass.Hull,PresentationLayer);
+            AddChild(display);
         }
         foreach (var child in node.GetChildren()) AddMeshes(child, local, placements, file, localFinish);
     }

@@ -1,4 +1,4 @@
-"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.0)."""
+"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.1)."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -194,6 +194,7 @@ def build():
     execute([sys.executable, ROOT / 'scripts/godot_world_assets.py', '--verify'])
     execute([sys.executable, ROOT / 'scripts/godot_space_assets.py', '--verify'])
     execute([sys.executable, ROOT / 'scripts/godot_crew_assets.py', '--verify'])
+    execute([sys.executable, ROOT / 'scripts/godot_combat_assets.py', '--verify'])
     execute([DOTNET, 'restore', 'Sidereal.Godot.csproj', '--locked-mode'])
     execute([DOTNET, 'build', 'Sidereal.Godot.csproj', '--no-restore'])
     execute([GODOT, '--headless', '--path', PROJECT, '--editor', '--import'])

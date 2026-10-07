@@ -278,7 +278,7 @@ public partial class CrewModel:Node3D
             }
         }
     }
-    private void SaveMeshes(Node root){foreach(var mesh in Descendants<MeshInstance3D>(root)){if(mesh.Mesh!=null){originalMeshes[mesh]=mesh.Mesh;originalMaterials[mesh]=Enumerable.Range(0,mesh.Mesh.GetSurfaceCount()).Select(i=>mesh.GetSurfaceOverrideMaterial(i)??mesh.Mesh.SurfaceGetMaterial(i)).ToArray();}mesh.Layers=RenderLayers;}}
+    private void SaveMeshes(Node root){foreach(var mesh in Descendants<MeshInstance3D>(root)){if(mesh.Mesh!=null){originalMeshes[mesh]=mesh.Mesh;originalMaterials[mesh]=Enumerable.Range(0,mesh.Mesh.GetSurfaceCount()).Select(i=>mesh.GetSurfaceOverrideMaterial(i)??mesh.Mesh.SurfaceGetMaterial(i)).ToArray();}SourceLightUnits.SetReceiver(mesh,SourceLightClass.Crew,RenderLayers);}}
     private void UpdateBodyCoverage()
     {
         if(body==null||appearance==null)return;var cover=parts.Values.SelectMany(p=>p.Request.Covers).ToHashSet();
@@ -318,13 +318,13 @@ public partial class CrewModel:Node3D
     {
         foreach(var mesh in Descendants<MeshInstance3D>(root))
         {
-            mesh.Layers=RenderLayers;if(mesh.Mesh==null)continue;
+            SourceLightUnits.SetReceiver(mesh,SourceLightClass.Crew,RenderLayers);if(mesh.Mesh==null)continue;
             for(var i=0;i<mesh.Mesh.GetSurfaceCount();i++)
             {
                 if(mesh.Mesh.SurfaceGetMaterial(i) is not BaseMaterial3D original)continue;var material=(BaseMaterial3D)original.Duplicate();var match=Regex.Match(material.ResourceName,@"^crew\.([a-z_]+)|^slot:([a-z_]+)@");var slot=match.Groups[1].Value+match.Groups[2].Value;
                 string color="";if(slot is "skin" or "hair")color=appearance!.Look.Get(slot);
                 if(bodyMaterial){color=slot switch{"suit_primary"=>appearance!.Look.Get("suit"),"accent"=>appearance!.Look.Get("accent"),"metal"=>appearance!.Look.Get("trim"),"emit"=>appearance!.Look.Get("light"),"glass"=>appearance!.Look.Get("visor"),_=>color};}
-                if(color.Length>0)material.AlbedoColor=Color.FromString(color,material.AlbedoColor);
+                if(Regex.IsMatch(color,@"^#[0-9a-fA-F]{6}$"))material.AlbedoColor=SourceLightUnits.ManualHexColour(color);
                 if(slot.StartsWith("emit")){material.EmissionEnergyMultiplier=.9f;material.Emission=material.AlbedoColor;}
                 var family=SourceSurfaceFinish.CrewFamily(slot,bodyMaterial);
                 if(definition is { } def&&def.TryGetProperty("families",out var families)&&families.TryGetProperty(slot,out var authored))family=authored.GetString() switch{"plastic" or "hair"=>"plastic-colour","plastic_dark" or "visor"=>"plastic-dark","cloth" or "fabric"=>"fabric","emit" or "emissive"=>"emissive",var named=>named};

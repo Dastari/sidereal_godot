@@ -165,8 +165,12 @@ public partial class InventoryGrid : Control
     }
     public override GodotObject _MakeCustomTooltip(string forText)
     {
+        if(forText.Length==0||!ItemDrag.TooltipsAllowed(this,core))return null!;
         var item = snapshot.Item(hovered);
-        return item == null ? UiKit.Tooltip("Inventory grid", forText) : UiKit.Tooltip(item.Name, ItemPresentation.Tooltip(core,item).Split('\n', 2).ElementAtOrDefault(1) ?? "",ItemPresentation.Rarity(item.Definition));
+        if(item==null)return UiKit.Tooltip("Inventory grid",forText);
+        var (w,h)=item.Definition?.Footprint(item.Rotated)??(1,1);
+        var anchor=ListMode?new Rect2(0,Array.FindIndex(VisibleItems,i=>i.Id==item.Id)*64,Size.X,64):new Rect2(item.X*Cell,item.Y*Cell,w*Cell,h*Cell);
+        return new ItemTooltip(this,core,item,"Drag to move · R rotates · Right-click for actions",anchor);
     }
 
     public override Variant _GetDragData(Vector2 atPosition)

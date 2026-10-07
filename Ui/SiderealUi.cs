@@ -30,7 +30,6 @@ public partial class SiderealUi : Control
     private Label healthValue = null!, weaponEnergyValue = null!, powerState = null!;
     private Label compactSummary = null!;
     private VBoxContainer fullTelemetry = null!;
-    private StyleBoxFlat healthFill = null!;
     private ProgressBar carry = null!, health = null!, weaponEnergy = null!;
     private HBoxContainer telemetryRow = null!, cargoRow = null!, healthRow = null!, weaponEnergyRow = null!;
     private VBoxContainer loginColumn = null!, crewColumn = null!;
@@ -169,7 +168,6 @@ public partial class SiderealUi : Control
     private void ApplyTheme()
     {
         Theme = palette.CreateTheme();
-        if (healthFill != null) healthFill.BgColor = palette.Danger;
         QueueLayout();
     }
 
@@ -264,10 +262,9 @@ public partial class SiderealUi : Control
         var telemetry = telemetryRow = new HBoxContainer(); telemetry.AddThemeConstantOverride("separation", 24);
         speed = UiKit.Label("— m/s", 12); speed.SizeFlagsHorizontal = SizeFlags.ExpandFill; telemetry.AddChild(speed);
         heading = UiKit.Label("—°", 12); telemetry.AddChild(heading); column.AddChild(telemetry);
-        healthRow = new HBoxContainer(); healthRow.AddChild(UiKit.Label("Health", 12)); healthRow.AddChild(UiKit.Spacer());
+        healthRow = new HBoxContainer(); healthRow.AddThemeConstantOverride("separation",6);healthRow.AddChild(new VitalIcon());healthRow.AddChild(UiKit.Label("Health", 12)); healthRow.AddChild(UiKit.Spacer());
         healthValue = UiKit.Label("", 12); healthRow.AddChild(healthValue); column.AddChild(healthRow);
-        health = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore }; column.AddChild(health);
-        healthFill = new StyleBoxFlat { BgColor = palette.Danger }; health.AddThemeStyleboxOverride("fill", healthFill);
+        health = new ProgressBar { ThemeTypeVariation="HealthBar", ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore }; column.AddChild(health);
         weaponEnergyRow = new HBoxContainer(); weaponEnergyRow.AddChild(UiKit.Label("Weapon energy", 12)); weaponEnergyRow.AddChild(UiKit.Spacer());
         weaponEnergyValue = UiKit.Label("", 12); weaponEnergyRow.AddChild(weaponEnergyValue); column.AddChild(weaponEnergyRow);
         weaponEnergy = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore }; column.AddChild(weaponEnergy);
@@ -323,6 +320,7 @@ public partial class SiderealUi : Control
         AddColor(column, "Text colour", palette.Text, value => palette.Text = value);
         AddColor(column, "Secondary text", palette.Muted, value => palette.Muted = value);
         AddColor(column, "Danger / invalid drop", palette.Danger, value => palette.Danger = value);
+        AddColor(column, "Health", palette.Health, value => palette.Health = value);
         AddColor(column, "Success", palette.Success, value => palette.Success = value);
         AddColor(column, "Warning", palette.Warning, value => palette.Warning = value);
         AddColor(column, "Common items", palette.Common, value => palette.Common = value);
@@ -516,6 +514,7 @@ public partial class SiderealUi : Control
     public void ShowMessage(string text) => notice = text;
 
     public object SmokeFacts() => new {
+        themeRoles=new {health=palette.Health.ToHtml(false),danger=palette.Danger.ToHtml(false)},
         inventoryVisible = inventoryWindow.Visible, equipmentVisible = equipmentWindow.Visible, menuOpen = menu.Visible, selectedMenuTab = menu.SelectedTab, navigationVisible = navigation.Visible, objectDetailsVisible = objectDetails.Visible,
         preferences = NativePreferences.Current.Snapshot, keyboardBlocked = BlocksKeyboardInput, pointerBlocked = BlocksPointerInput, cameraBlocked = BlocksCameraInput, dragging = inventoryWindow.InteractionActive,
         itemDragging=inventory.InteractionActive,guiDragging=GetViewport().GuiIsDragging(),windowInteractions=windows.Where(w=>w.InteractionActive).Select(w=>w.LayoutKey).ToArray(),

@@ -22,6 +22,7 @@ public partial class Main : Node3D
     private FrontendBackdrop backdrop = null!;
     private ReplicatedWorld world = null!;
     private PresentationDisplay display = null!;
+    private SpaceCombatEffects combatEffects = null!;
     private readonly GameplayKeyState gameplayKeys = new();
     private ulong gameplayEpoch;
     private bool keyboardWasAllowed, orbiting;
@@ -89,6 +90,7 @@ public partial class Main : Node3D
     {
         world = new ReplicatedWorld(); AddChild(world);
         backdrop = new FrontendBackdrop(); AddChild(backdrop);
+        combatEffects = new SpaceCombatEffects(); AddChild(combatEffects);
     }
     private void StartSignIn()
     {
@@ -149,6 +151,9 @@ public partial class Main : Node3D
         backdrop.SetVisible(!worldVisible);
         world.SetPresentationBounds(ui.WorldPresentationBounds);
         world.Sync(core, delta, worldVisible);
+        combatEffects.Sync(core,new CombatPresentationFrame(world.PresentedShipRoot,core.CurrentPresentedShip?.Id??"",world.RenderOriginX,world.RenderOriginY,
+            world.StandingElevation,world.IsInterior,ui.WorldVisible&&!worldPreview&&(core.Instance!=null||core.PassengerInterior!=null||core.Eva!=null),1,preferences.ReducedMotion,WorldRoot:world),
+            Time.GetTicksMsec()/1000.0,world.CombatBody);
         ui.SetGroundItemLabels(world.GroundItemLabels(core).Select(item =>
             (item.Id, item.DefinitionId, item.Reachable, item.Position)).ToArray());
         ui.SetGraphicsStatus(world.GraphicsStatus);
@@ -195,6 +200,7 @@ public partial class Main : Node3D
                 key = smokeLastKey, ui = ui.SmokeFacts(), world = new { world.Status, world.LoadedAssetCount, world.RenderedPlacementCount, missing = world.MissingAssetIds,
                     projected = new { x = world.ProjectedShipBounds.Position.X, y = world.ProjectedShipBounds.Position.Y, width = world.ProjectedShipBounds.Size.X, height = world.ProjectedShipBounds.Size.Y } },
                 space = world.SpaceFacts, preferences = NativePreferences.Current.Snapshot,
+                effects = new {combatEffects.AcceptedShots,combatEffects.AcceptedImpacts,combatEffects.LiveCount,combatEffects.PendingCount,missing=combatEffects.MissingAssets},
                 gameplay = new { core.GameplayEpoch, core.SharedWorldEpoch, core.SpatialReady, core.SpatialCellSets, core.InteriorView,
                     core.CombatEnabled, core.CruiseActive, core.GameplayPending, core.GameplayMessage,
                     interaction = core.Interaction, selectedPlacement = core.SelectedPlacementId },
