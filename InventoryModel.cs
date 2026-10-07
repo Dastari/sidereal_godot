@@ -145,7 +145,7 @@ public static class InventoryCatalog
             var revision = pins.TryGetValue(i.Id, out var pin) && pin.DefinitionId == i.DefinitionId ? pin.ItemRevision : 1;
             return new InventoryItemView(i.Id, i.DefinitionId, i.ContainerId, "", i.X, i.Y, i.Rotated, Resolve(i.DefinitionId, revision, definitions), i.Revision);
         })).DistinctBy(i => i.Id).ToArray();
-        var containers = connection.Db.OwnInventoryContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, c.Carried, "", CarriedRevision("container", c.Id)))
+        var containers = connection.Db.OwnInventoryContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, c.Carried, c.PlacementId, CarriedRevision("container", c.Id)))
             .Concat(connection.Db.OwnReachableCargoContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, false, c.PlacedObjectId, c.Revision, true)))
             .DistinctBy(c => c.Id).ToArray();
         return new(state.Revision, true, state.CarriedMassKg, state.CarryLimitKg, state.PocketsId, items, containers,

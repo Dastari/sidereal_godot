@@ -429,6 +429,8 @@ using (var goldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext
     Console.WriteLine("Source stellar event phases and perspective/frustum dust strata match independent pinned renderer outputs.");
 }
 
+InventoryAttemptTests.Run();
+InventoryInteractionTests.Run();
 OwnedMotionTests.Run(Path.Combine(AppContext.BaseDirectory, "owned-motion-golden.json"));
 OwnedMotionTests.RunYaw(Path.Combine(AppContext.BaseDirectory, "owned-yaw-golden.json"));
 
@@ -794,6 +796,11 @@ var floorMass = client.Inventory.CarriedMassKg;
 Require(client.DropItem(floorCandidate.Id, client.Inventory.Revision), "Explicit floor drop did not dispatch");
 Wait(() => !client.InventoryPending && client.Inventory.Item(floorCandidate.Id) is { } dropped && client.Inventory.Container(dropped.ContainerId)?.Carried == false &&
     client.Connection!.Db.OwnGroundItems.Iter().Any(row => row.Id == floorCandidate.Id && row.Reachable), "Accepted drop did not leave carried inventory and enter the scoped floor view");
+var droppedContainer = client.Inventory.Container(client.Inventory.Item(floorCandidate.Id)!.ContainerId)!;
+var disclosedGroundContainer = client.Connection!.Db.OwnInventoryContainers.Iter().FirstOrDefault(row => row.Id == droppedContainer.Id);
+Require(disclosedGroundContainer != null && disclosedGroundContainer.PlacementId.StartsWith("ground:", StringComparison.Ordinal) &&
+    droppedContainer.PlacementId == disclosedGroundContainer.PlacementId, "Native inventory projection discarded the disclosed ground wrapper placement identity");
+Console.WriteLine("Native ground storage retains the exact disclosed placement identity for routing and attempt correlation.");
 Require(client.TakeGroundItem(floorCandidate.Id), "Reachable floor pickup did not dispatch the supported transfer transaction");
 Wait(() => !client.InventoryPending && client.Inventory.Item(floorCandidate.Id) is { } picked && client.Inventory.Container(picked.ContainerId)?.Carried == true &&
     !client.Connection!.Db.OwnGroundItems.Iter().Any(row => row.Id == floorCandidate.Id), "Accepted pickup did not reconcile carried/floor views");

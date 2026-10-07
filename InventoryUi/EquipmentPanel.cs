@@ -154,8 +154,10 @@ internal partial class EquipmentPaperDoll : Control
     }
 }
 
-internal partial class EquipmentSlot : Control
+internal partial class EquipmentSlot : Control, IInventoryInteractionSurface
 {
+    ClientCore IInventoryInteractionSurface.InventoryCore=>core;
+    bool IInventoryInteractionSurface.InventoryDemo=>demo;
     private readonly ClientCore core;
     private readonly bool demo;
     private readonly string slot;
@@ -181,24 +183,24 @@ internal partial class EquipmentSlot : Control
         TooltipText = ItemDrag.TooltipsAllowed(this,core)?item != null ? ItemPresentation.Tooltip(core,item) : $"{SlotLabel}: empty\nDrag an equippable item for this slot here.":"";
         QueueRedraw();
     }
-    public override bool _CanDropData(Vector2 position, Variant data) => ItemDrag.Payload(data) && ItemDrag.Current is { } drag && drag.Core == core && drag.Demo == demo && !core.InventoryPending && drag.Item.Definition?.EquipSlot == slot;
-    public override GodotObject _MakeCustomTooltip(string forText) => forText.Length==0||!ItemDrag.TooltipsAllowed(this,core)?null!:item==null?UiKit.Tooltip(SlotLabel,forText):new ItemTooltip(this,core,item,"Drag to stow · Double-click to stow · Right-click to inspect");
-    public override void _DropData(Vector2 position, Variant data)
+    public override GodotObject _MakeCustomTooltip(string forText) => forText.Length==0||!ItemDrag.TooltipsAllowed(this,core)?null!:item==null?UiKit.Tooltip(SlotLabel,forText):new ItemTooltip(this,core,item,"Click to pick up · Double-click to stow · Right-click to inspect");
+    InventorySourceHit? IInventoryInteractionSurface.InventorySource(Vector2 local)=>item!=null&&new Rect2(Vector2.Zero,Size).HasPoint(local)?new(this,item,new Rect2(Vector2.Zero,Size)):null;
+    InventorySourceHit? IInventoryInteractionSurface.InventoryOrigin(string id)=>item?.Id==id?new(this,item,new Rect2(Vector2.Zero,Size)):null;
+    InventoryTarget? IInventoryInteractionSurface.InventoryTarget(InventoryItemView source,bool rotated,Vector2 fraction,Vector2 local)
     {
-        if (!_CanDropData(position, data) || ItemDrag.Current is not { } drag) return;
-        if (demo) DemoInventory.Equip(drag.Item.Id); else core.EquipItem(drag.Item.Id, drag.Revision);
+        var rect=new Rect2(Vector2.Zero,Size);if(!rect.HasPoint(local))return null;
+        if(slot=="back"&&source.Definition?.EquipSlot!="back")
+        {
+            var pack=snapshot.Items.FirstOrDefault(i=>i.EquipmentSlot=="back");var bag=snapshot.Containers.FirstOrDefault(c=>c.ParentItemId==pack?.Id&&c.Kind=="grid");
+            return new(this,rect,InventoryTargetKind.Transfer,bag!=null&&snapshot.FirstPlacement(source.Id,bag.Id)!=null,bag==null?"Equip a backpack first.":"No room in this backpack.",bag?.Id??"",Priority:40);
+        }
+        var matches=source.Definition?.EquipSlot==slot;
+        return new(this,rect,InventoryTargetKind.Equip,matches,matches?"":"This item does not fit this equipment slot.",Priority:40);
     }
-    public override Variant _GetDragData(Vector2 position)
-    {
-        if (item?.Definition == null || core.InventoryPending) return default;
-        var drag = new ItemDrag { Core = core, Item = item, Revision = snapshot.Revision, Rotated = item.Rotated, Demo = demo,
-            GrabFraction=new Vector2(Mathf.Clamp(position.X/Math.Max(1,Size.X),0,1),Mathf.Clamp(position.Y/Math.Max(1,Size.Y),0,1)) };
-        ItemDrag.Current = drag; drag.Preview = new InventoryDragPreview(drag); SetDragPreview(drag.Preview); core.ReleaseControls();
-        return new Godot.Collections.Dictionary { ["sidereal-item"] = item.Id };
-    }
-    public override void _Notification(int what) { if (what == NotificationDragEnd) ItemDrag.Released(this); }
+    public override Variant _GetDragData(Vector2 position)=>default;
     public override void _GuiInput(InputEvent input)
     {
+        if(!ItemDrag.InteractionEnabled(core))return;
         if(item==null)return;
         if(input.IsActionPressed("ui_accept")){InspectRequested?.Invoke(item.Id);AcceptEvent();return;}
         if(input is InputEventMouseButton {Pressed:true,ButtonIndex:MouseButton.Right}){InspectRequested?.Invoke(item.Id);AcceptEvent();return;}
@@ -206,8 +208,8 @@ internal partial class EquipmentSlot : Control
         {
             if(mouse.DoubleClick)
             {
-                var target=snapshot.Containers.FirstOrDefault(c=>c.Carried&&c.Kind=="grid"&&snapshot.FirstPlacement(item.Id,c.Id)!=null);
-                if(target!=null){if(demo&&snapshot.FirstPlacement(item.Id,target.Id) is {} placement)DemoInventory.Move(item.Id,target.Id,placement.X,placement.Y,placement.Rotated);else core.TransferItem(item.Id,target.Id,snapshot.Revision);}
+                if(!demo)core.TransferItem(item.Id,"",snapshot.Revision);
+                else if(InventoryInteractionView.DefaultCarriedDestination(snapshot,item) is {} destination&&snapshot.FirstPlacement(item.Id,destination) is {} placement)DemoInventory.Move(item.Id,destination,placement.X,placement.Y,placement.Rotated);
             }
             if(mouse.DoubleClick)AcceptEvent();
         }
@@ -215,9 +217,9 @@ internal partial class EquipmentSlot : Control
     public override void _Draw()
     {
         var p = SiderealPalette.Current; var font = GetThemeFont("font", "Label");
-        ItemFrameStyle.Paint(this,new Rect2(Vector2.Zero,Size),item != null ? ItemPresentation.Rarity(item.Definition) : EmptyRarity,false,hover,HasFocus(),core.InventoryPending,item==null);
+        ItemFrameStyle.Paint(this,new Rect2(Vector2.Zero,Size),item != null ? ItemPresentation.Rarity(item.Definition) : EmptyRarity,false,hover,HasFocus(),core.InventoryPending,item==null,item!=null&&ItemDrag.Ghost(item.Id) ? .34f : 1);
         var texture = InventoryIcons.Texture(item?.Definition);
-        if (texture != null) DrawTextureRect(texture, InventoryIcons.Fit(texture, new Rect2(7, 7, Math.Max(1, Size.X - 14), Math.Max(1, Size.Y - 14))), false);
+        if (texture != null) DrawTextureRect(texture, InventoryIcons.Fit(texture, new Rect2(7, 7, Math.Max(1, Size.X - 14), Math.Max(1, Size.Y - 14))), false, Colors.White with {A=ItemDrag.Ghost(item?.Id??"") ? .34f : 1});
         else DrawString(font, new Vector2(7, Size.Y - 9), InventoryGrid.Fit(font, item?.Definition == null && item != null ? "?" : SlotLabel, Math.Max(1, Size.X - 14), 10), HorizontalAlignment.Left, Math.Max(1, Size.X - 14), 10, item != null ? p.Warning : p.Muted);
     }
 }

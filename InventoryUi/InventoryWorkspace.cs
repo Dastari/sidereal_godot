@@ -61,7 +61,7 @@ public partial class InventoryWorkspace : VBoxContainer
     private readonly Label summary, message, reservoir, selectedDetail;
     private readonly Button starter; private readonly ContainerPane left,right;
     private readonly GridContainer columns; private string selected="", detailKey="";
-    public bool InteractionActive => ItemDrag.Current?.Core==core;
+    public bool InteractionActive => ItemDrag.Owner?.Core==core&&ItemDrag.Owner.Capturing;
     public string SelectedItemId=>selected;
     public event Action<string>? ContainerOpenRequested;
     public InventoryWorkspace(ClientCore core,bool demo)
@@ -76,7 +76,7 @@ public partial class InventoryWorkspace : VBoxContainer
         left.ContainerOpenRequested+=id=>ContainerOpenRequested?.Invoke(id);right.ContainerOpenRequested+=id=>ContainerOpenRequested?.Invoke(id);
         selectedDetail=UiKit.Paragraph("Select an item to inspect its pinned definition.",0);selectedDetail.AddThemeFontSizeOverride("font_size",14);AddChild(UiKit.Panel(selectedDetail,8,"QuietPanel"));
         reservoir=UiKit.Paragraph("",0);reservoir.AddThemeFontSizeOverride("font_size",13);AddChild(reservoir);
-        AddChild(UiKit.Paragraph("Drag to move · R rotates · Double-click equips · Right-click for actions. Filters keep occupied cells reserved.",0).Sized(12));
+        AddChild(UiKit.Paragraph("Click to pick up · Drag to move · R rotates · Double-click equips · Right-click for actions. Filters keep occupied cells reserved.",0).Sized(12));
         Resized+=()=>columns.Columns=Size.X<620?1:2;Refresh();
     }
     private void SelectDetails(string itemId)
@@ -108,8 +108,10 @@ public partial class InventoryWorkspace : VBoxContainer
     }
 }
 
-internal partial class ContainerPane : VBoxContainer
+internal partial class ContainerPane : VBoxContainer, IInventoryInteractionSurface
 {
+    ClientCore IInventoryInteractionSurface.InventoryCore=>core;
+    bool IInventoryInteractionSurface.InventoryDemo=>demo;
     private readonly ClientCore core;private readonly bool demo;private readonly int initialIndex;private readonly string fixedContainerId;
     private readonly OptionButton choice,category,sort;private readonly LineEdit search;private readonly Label capacity;private readonly CheckButton list;
     private readonly ScrollContainer gridScroll;private readonly PopupMenu context;private readonly Button bulk,rarity;
@@ -134,7 +136,7 @@ internal partial class ContainerPane : VBoxContainer
         category.ItemSelected+=_=>UpdateFilter();search.TextChanged+=_=>UpdateFilter();list.Toggled+=_=>UpdateFilter();sort.ItemSelected+=_=>UpdateFilter();
         capacity=UiKit.Paragraph("",0).Sized(12);AddChild(capacity);
         gridScroll=new ScrollContainer {SizeFlagsHorizontal=SizeFlags.ExpandFill,HorizontalScrollMode=ScrollContainer.ScrollMode.Auto,VerticalScrollMode=ScrollContainer.ScrollMode.Auto,CustomMinimumSize=new Vector2(0,200)};AddChild(gridScroll);
-        bulk=UiKit.Button("Take all",()=>{if(demo)return;var container=snapshot.Container(chosen);if(container==null)return;if(!container.Carried)core.TakeAll(chosen,snapshot.Revision);else if(BulkDestination() is {} destination)core.StoreAll(chosen,destination,snapshot.Revision);});AddChild(bulk);
+        bulk=UiKit.Button("Take all",()=>{if(demo)return;ItemDrag.Owner?.CancelLocal();var container=snapshot.Container(chosen);if(container==null)return;if(!container.Carried)core.TakeAll(chosen,snapshot.Revision);else if(BulkDestination() is {} destination)core.StoreAll(chosen,destination,snapshot.Revision);});AddChild(bulk);
         context=new PopupMenu();AddChild(context);context.IdPressed+=ContextAction;
     }
     public void Select(string id){selected=id;if(grid!=null)grid.SelectedId=id;}
@@ -153,7 +155,7 @@ internal partial class ContainerPane : VBoxContainer
         if(!nextIds.SequenceEqual(ids))
         {
             ids=nextIds;choice.Clear();foreach(var c in containers)choice.AddItem(c.Name+(c.Carried?" · carried":" · nearby"));
-            if(!ids.Contains(chosen)){chosen=ids.ElementAtOrDefault(Math.Min(initialIndex,Math.Max(0,ids.Length-1)))??"";context.Hide();if(ItemDrag.Current?.Core==core){GetViewport().GuiCancelDrag();ItemDrag.Current=null;}}
+            if(!ids.Contains(chosen)){chosen=ids.ElementAtOrDefault(Math.Min(initialIndex,Math.Max(0,ids.Length-1)))??"";context.Hide();if(ItemDrag.Owner?.Core==core)ItemDrag.Owner.CancelLocal();}
             if(ids.Length>0)choice.Select(Array.IndexOf(ids,chosen));ReplaceGrid();
         }
         var container=next.Container(chosen);capacity.Text=container==null?"No accessible storage.":$"{container.Width} × {container.Height} cells · Payload limit {container.MaxMassKg:0.##} kg";
@@ -168,17 +170,18 @@ internal partial class ContainerPane : VBoxContainer
         grid=new InventoryGrid(core,demo,snapshot,container);grid.SelectedId=selected;grid.SelectionChanged+=id=>{selected=id;Selected?.Invoke(id);};grid.ContextRequested+=OpenContext;
         gridScroll.AddChild(grid);UpdateFilter();
     }
-    private string? BulkDestination()=>snapshot.Containers.FirstOrDefault(c=>c.Kind=="grid"&&!c.Carried&&c.Id!=chosen)?.Id;
-    private string? Destination(string itemId)
+    InventorySourceHit? IInventoryInteractionSurface.InventorySource(Vector2 local)=>null;
+    InventoryTarget? IInventoryInteractionSurface.InventoryTarget(InventoryItemView item,bool rotated,Vector2 fraction,Vector2 local)
     {
-        var item=snapshot.Item(itemId);var source=snapshot.Container(item?.ContainerId??chosen);
-        return snapshot.Containers.Where(c=>c.Kind=="grid"&&c.Id!=(item?.ContainerId??chosen)&&c.ParentItemId!=itemId)
-            .OrderByDescending(c=>source?.Carried==false&&c.Carried).ThenByDescending(c=>source?.Carried==true&&!c.Carried).ThenByDescending(c=>c.Id==snapshot.PocketsId)
-            .FirstOrDefault(c=>item==null||snapshot.FirstPlacement(itemId,c.Id)!=null)?.Id;
+        if(snapshot.Container(chosen) is not {} container||!new Rect2(Vector2.Zero,Size).HasPoint(local))return null;
+        var top=capacity.Position.Y;var body=new Rect2(0,top,Size.X,Math.Max(0,Size.Y-top));if(!body.HasPoint(local))return null;
+        var fits=snapshot.FirstPlacement(item.Id,container.Id)!=null;
+        return new(this,body,InventoryTargetKind.Transfer,fits,fits?"":"No room in this storage.",container.Id,Priority:10);
     }
+    private string? BulkDestination()=>snapshot.Containers.FirstOrDefault(c=>c.Kind=="grid"&&!c.Carried&&c.Id!=chosen&&!c.PlacementId.StartsWith("ground:",StringComparison.Ordinal))?.Id;
     private void OpenContext(string itemId,Vector2 position)
     {
-        var item=snapshot.Item(itemId);if(item==null)return;contextItem=itemId;Selected?.Invoke(itemId);context.Clear();context.ContentScaleFactor=GetGlobalTransformWithCanvas().Scale.X;
+        var item=snapshot.Item(itemId);if(item==null)return;ItemDrag.Owner?.CancelLocal();contextItem=itemId;Selected?.Invoke(itemId);context.Clear();context.ContentScaleFactor=GetGlobalTransformWithCanvas().Scale.X;
         context.AddItem("Inspect",0);
         if(item.Definition?.EquipSlot.Length>0)context.AddItem(item.EquipmentSlot.Length>0?"Unequip to carried storage":"Equip",1);
         context.AddItem("Quick transfer",2);
@@ -194,13 +197,13 @@ internal partial class ContainerPane : VBoxContainer
         switch(action)
         {
             case 0:Selected?.Invoke(item.Id);break;
-            case 1:if(item.EquipmentSlot.Length>0){var carried=snapshot.Containers.FirstOrDefault(c=>c.Carried&&c.Kind=="grid"&&snapshot.FirstPlacement(item.Id,c.Id)!=null);if(carried!=null)Transfer(item,carried.Id);}else if(demo)DemoInventory.Equip(item.Id);else core.EquipItem(item.Id,snapshot.Revision);break;
-            case 2:if(Destination(item.Id) is {} destination)Transfer(item,destination);break;
+            case 1:if(item.EquipmentSlot.Length>0)Transfer(item,"");else if(demo)DemoInventory.Equip(item.Id);else core.EquipItem(item.Id,snapshot.Revision);break;
+            case 2:grid?.QuickTransfer(item.Id);break;
             case 3:if(snapshot.Containers.FirstOrDefault(c=>c.ParentItemId==item.Id&&c.Kind=="grid") is {} child){if(ContainerOpenRequested!=null)ContainerOpenRequested(child.Id);else OpenContainer(child.Id);}break;
             case 4:grid?.PickUpAndRotate(item.Id);break;
             case 5:core.DropItem(item.Id,snapshot.Revision);break;
         }
     }
     private void Transfer(InventoryItemView item,string destination)
-    {if(demo){if(snapshot.FirstPlacement(item.Id,destination) is {} slot)DemoInventory.Move(item.Id,destination,slot.X,slot.Y,slot.Rotated);}else core.TransferItem(item.Id,destination,snapshot.Revision);}
+    {if(demo){var target=destination.Length>0?destination:InventoryInteractionView.DefaultCarriedDestination(snapshot,item);if(target!=null&&snapshot.FirstPlacement(item.Id,target) is {} slot)DemoInventory.Move(item.Id,target,slot.X,slot.Y,slot.Rotated);}else core.TransferItem(item.Id,destination,snapshot.Revision);}
 }

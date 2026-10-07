@@ -31,7 +31,7 @@ public partial class StorageWindow : DockWindow
         if(snapshot.Container(ContainerId)==null)
         {
             Hide();
-            if(ItemDrag.Current?.Core==core){GetViewport().GuiCancelDrag();ItemDrag.Released(this);}
+            if(ItemDrag.Owner?.Core==core)ItemDrag.Owner.CancelLocal();
             GetViewport().GuiReleaseFocus();core.ReleaseControls();AccessLost?.Invoke();return;
         }
         pane.Refresh(snapshot);

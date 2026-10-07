@@ -258,7 +258,7 @@ public sealed partial class ClientCore
         }
         if (inventoryBatch != null && !InventoryPending)
         {
-            if (Connection == null || InventoryMessage.StartsWith("Rejected", StringComparison.Ordinal) || InventoryMessage.StartsWith("Confirmation", StringComparison.Ordinal))
+            if (Connection == null || InventoryAttempt?.Phase != InventoryAttemptPhase.Confirmed)
             { inventoryBatch = null; return; }
             if (inventoryBatch.TryDequeue(out var item))
             {
@@ -695,22 +695,36 @@ public sealed partial class ClientCore
         return Command("furnishing", (connection, operation) => connection.Reducers.EditShipFurnishing(instance.Id, sourceObjectId, action, dx, dy, yaw, snap, instance.FurnishingRevision, operation));
     }
 
-    private bool TransferCargo(string item, string destination, ulong revision, (int X, int Y, bool Rotated)? exact = null)
+    private bool TransferCargo(string item, string destination, ulong revision, (int X, int Y, bool Rotated)? exact = null,
+        bool composeEquip = false, InventoryAttemptTarget? finalTarget = null)
     {
         InventoryCargoPlan plan;
         try { plan = InventoryCargoPlan.Create(Inventory, item, destination, exact); }
         catch (InvalidOperationException error) { InventoryMessage = error.Message; return false; }
-        if (!InventoryIntent(revision, (connection, operation) => connection.Reducers.TransferScopedCargoItem(operation,
+        var target = finalTarget ?? new InventoryAttemptTarget(plan.DestinationContainerId, plan.X, plan.Y, plan.Rotated, ItemId: item);
+        return InventoryIntent(composeEquip ? InventoryAttemptKind.Equip : exact != null ? InventoryAttemptKind.Move : InventoryAttemptKind.Transfer,
+            item, revision, target, (connection, operation) => connection.Reducers.TransferScopedCargoItem(operation,
             plan.ItemId, plan.ExpectedItemRevision, plan.SourceContainerId, plan.ExpectedSourceRevision,
-            plan.DestinationContainerId, plan.ExpectedDestinationRevision, plan.ExpectedCharacterRevision, plan.X, plan.Y, plan.Rotated))) return false;
-        inventoryCargo = plan; return true;
+            plan.DestinationContainerId, plan.ExpectedDestinationRevision, plan.ExpectedCharacterRevision, plan.X, plan.Y, plan.Rotated), plan, composeEquip);
     }
     public bool TransferItem(string item, string container, ulong revision) => Inventory.UsesScopedCargo(item, container)
         ? TransferCargo(item, container, revision)
-        : InventoryIntent(revision, (connection, operation) => connection.Reducers.TransferInventoryItem(item, container, revision, operation));
+        : InventoryIntent(InventoryAttemptKind.Transfer, item, revision,
+            DefaultTransferTarget(item, container),
+            (connection, operation) => connection.Reducers.TransferInventoryItem(item, container, revision, operation));
+    private InventoryAttemptTarget DefaultTransferTarget(string item, string container = "")
+    {
+        // inventory-operations.ts auto-equips a retrieved floor backpack only when
+        // the actor has no backpack. Other default transfers choose carried storage.
+        var floorBackpack = container.Length == 0 && Inventory.Item(item)?.Definition?.EquipSlot == "back" &&
+            !Inventory.Items.Any(row => row.EquipmentSlot == "back") && Connection?.Db.OwnGroundItems.Iter().Any(row => row.Id == item) == true;
+        return new(container, EquipmentSlot: floorBackpack ? "back" : "", ItemId: item,
+            DestinationKind: container.Length > 0 ? InventoryDestinationKind.Exact : InventoryDestinationKind.Carried);
+    }
     public bool DropItem(string item, ulong revision) => Inventory.Item(item) is { } target &&
         (target.EquipmentSlot.Length > 0 || Inventory.Container(target.ContainerId)?.Carried == true) &&
-        InventoryIntent(revision, (connection, operation) => connection.Reducers.DropInventoryItem(item, revision, operation));
+        InventoryIntent(InventoryAttemptKind.Drop, item, revision, new(ItemId: item, DestinationKind: InventoryDestinationKind.Ground),
+            (connection, operation) => connection.Reducers.DropInventoryItem(item, revision, operation));
     private bool BeginCargoBatch(string container, string destination, ulong revision)
     {
         if (InventoryPending || inventoryBatch != null || Inventory.Revision != revision || Inventory.Container(container) == null ||
@@ -719,14 +733,20 @@ public sealed partial class ClientCore
         inventoryBatchDestination = destination;
         if (inventoryBatch.Count == 0) { inventoryBatch = null; return false; }
         InventoryMessage = "Transferring items with current storage revisions…";
-        TickGameplayOperations(); return InventoryPending;
+        var first = inventoryBatch.Dequeue();
+        if (TransferItem(first, inventoryBatchDestination, Inventory.Revision)) return true;
+        inventoryBatch = null; return false;
     }
     public bool TakeAll(string container, ulong revision) => Inventory.Container(container)?.IsScopedCargo == true
         ? BeginCargoBatch(container, "", revision)
-        : InventoryIntent(revision, (connection, operation) => connection.Reducers.TakeAllInventoryItems(container, revision, operation));
+        : InventoryIntent(InventoryAttemptKind.TakeAll, "", revision, new(DestinationKind: InventoryDestinationKind.Carried),
+            (connection, operation) => connection.Reducers.TakeAllInventoryItems(container, revision, operation),
+            sourceItems: Inventory.Items.Where(item => item.ContainerId == container).Select(item => item.Id));
     public bool StoreAll(string container, string destination, ulong revision) => Inventory.Container(container)?.IsScopedCargo == true || Inventory.Container(destination)?.IsScopedCargo == true
         ? BeginCargoBatch(container, destination, revision)
-        : InventoryIntent(revision, (connection, operation) => connection.Reducers.StoreAllInventoryItems(container, destination, revision, operation));
+        : InventoryIntent(InventoryAttemptKind.StoreAll, "", revision, new(destination),
+            (connection, operation) => connection.Reducers.StoreAllInventoryItems(container, destination, revision, operation),
+            sourceItems: Inventory.Items.Where(item => item.ContainerId == container).Select(item => item.Id));
     public bool TakeGroundItem(string itemId) => PickupGroundItem(itemId, Inventory.Revision);
     public bool PickupGroundItem(string itemId) => TakeGroundItem(itemId);
     public bool PickupGroundItem(string itemId, ulong expectedRevision)
@@ -739,11 +759,11 @@ public sealed partial class ClientCore
         var sameScene = nativeScene ? ground?.InstanceId == location!.InstanceId && ground?.DeckId == location.DeckId : location == null && ground?.InstanceId == "" && ground?.DeckId == "";
         if (actor?.Connected != true || !Alive || Eva != null || Resting || IsPiloting || stair || ground?.Reachable != true || !sameScene)
         { InventoryMessage = "Stand within reach of this item on your current deck."; return false; }
-        if (!InventoryIntent(expectedRevision, (connection, operation) => connection.Reducers.TransferInventoryItem(itemId, "", expectedRevision, operation))) return false;
-        inventoryPickup = (itemId, expectedRevision, actor.Id);
-        return true;
+        return InventoryIntent(InventoryAttemptKind.Pickup, itemId, expectedRevision,
+            DefaultTransferTarget(itemId),
+            (connection, operation) => connection.Reducers.TransferInventoryItem(itemId, "", expectedRevision, operation));
     }
-    public bool ClaimArmory(ulong revision) => InventoryIntent(revision,
+    public bool ClaimArmory(ulong revision) => InventoryIntent(InventoryAttemptKind.ClaimArmory, "", revision, new(DestinationKind: InventoryDestinationKind.Revision),
         (connection, operation) => connection.Reducers.ClaimCharacterArmory(revision, operation));
 
     // Geometry is supplied from the pinned browser content adapter, never hand-authored coordinates.

@@ -42,6 +42,7 @@ public partial class SiderealUi : Control
     private InventoryWorkspace inventory = null!;
     private EquipmentPanel equipment = null!;
     private HotbarView hotbar = null!;
+    private InventoryInteractionView itemInteraction = null!;
     private bool entered, waitingForEntry;
     private bool entryJoinAttempted, entryAwaitingReceipt;
     private bool gameplayShell;
@@ -71,7 +72,7 @@ public partial class SiderealUi : Control
         {
             if(storageWindows.Count>=6){ShowMessage("Close a storage window before opening another.");return false;}
             window=new StorageWindow(core,demo||worldPreview,container,WindowBounds.Position+new Vector2(260+storageWindows.Count*24,24+storageWindows.Count*24));
-            storageWindows[id]=window;windows.Add(window);AddChild(window);
+            storageWindows[id]=window;windows.Add(window);AddChild(window);window.VisibilityChanged+=()=>{if(!window.IsVisibleInTree())itemInteraction?.CancelLocal();};
             window.ItemInspectRequested+=itemId=>inventory.SelectItem(itemId);
             window.ContainerOpenRequested+=childId=>OpenContainer(childId);
             var captured=window;
@@ -82,7 +83,7 @@ public partial class SiderealUi : Control
     }
     public bool BlocksKeyboardInput => !WorldVisible || menu.Visible || inventoryWindow.Visible || equipmentWindow.Visible || storageWindows.Values.Any(w=>w.Visible) ||
         inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(w => w.Visible && w.InteractionActive) || GetViewport().GuiGetFocusOwner() != null;
-    public bool BlocksPointerInput => !WorldVisible || menu.Visible || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || PointerOverUi() || GetViewport().GuiIsDragging();
+    public bool BlocksPointerInput => !WorldVisible || menu.Visible || itemInteraction?.Capturing==true || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || PointerOverUi() || GetViewport().GuiIsDragging();
     public bool BlocksCameraInput => !WorldVisible || menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || GetViewport().GuiIsDragging() || PointerOverUi();
     public bool GameplayShortcutBlocked => menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(window => window.Visible && window.InteractionActive);
     public bool WorldVisible => !demo && entered && core.Character?.Connected == true;
@@ -90,7 +91,7 @@ public partial class SiderealUi : Control
     {
         foreach(var window in windows)window.CancelInteraction();
         equipment.CancelPreviewInteraction();
-        GetViewport().GuiCancelDrag();ItemDrag.Released(this);GetViewport().GuiReleaseFocus();core.ReleaseControls();
+        GetViewport().GuiCancelDrag();itemInteraction?.CancelLocal();GetViewport().GuiReleaseFocus();core.ReleaseControls();
     }
     public bool BlocksWorldInput => !WorldVisible || menu.Visible || windows.Exists(w => w.Visible && w.InteractionActive) ||
         inventory.InteractionActive || equipment.PreviewInteractionActive || GetViewport().GuiIsDragging() || GetViewport().GuiGetFocusOwner() != null ||
@@ -126,6 +127,14 @@ public partial class SiderealUi : Control
         ReadPreviewLayoutArguments();
         palette.Changed += ApplyTheme;
         BuildHeader(); BuildLogin(); BuildCrew(); BuildHud(); BuildWindows(); BuildFooter(); BuildGameplayPanels();
+        itemInteraction=new InventoryInteractionView(core,demo||worldPreview)
+        {
+            TopWindowAt=point=>windows.Where(w=>w.IsVisibleInTree()&&w.GetGlobalRect().HasPoint(point)).OrderByDescending(w=>w.ZIndex).FirstOrDefault(),
+            OpenTransferDestination=()=>storageWindows.Values.Where(w=>w.IsVisibleInTree()).OrderByDescending(w=>w.ZIndex).Select(w=>InventoryPresentation.Read(core,demo||worldPreview).Container(w.ContainerId)).FirstOrDefault(c=>c!=null&&!c.Carried&&!c.PlacementId.StartsWith("ground:",StringComparison.Ordinal))?.Id,
+            Enabled=()=>!menu.Visible&&!settingsWindow.Visible&&(demo||worldPreview||WorldVisible)
+        };
+        AddChild(itemInteraction);
+        menu.VisibilityChanged+=()=>{if(menu.Visible)itemInteraction.CancelLocal();};
         GetViewport().SizeChanged += QueueLayout;
         hud.MinimumSizeChanged += QueueLayout;
         actionFrame.MinimumSizeChanged += QueueLayout;
@@ -205,7 +214,7 @@ public partial class SiderealUi : Control
 
         context = UiKit.Label("", 14); context.HorizontalAlignment = HorizontalAlignment.Center;
         context.MouseFilter = MouseFilterEnum.Ignore; context.ThemeTypeVariation="MutedLabel"; AddChild(context);
-        menuButton = UiKit.Button("Menu", () => { core.ReleaseControls(); menu.Visible = !menu.Visible; if (menu.Visible) menu.BringToFront(); });
+        menuButton = UiKit.Button("Menu", () => { itemInteraction?.CancelLocal(); core.ReleaseControls(); menu.Visible = !menu.Visible; if (menu.Visible) menu.BringToFront(); });
         menuButton.CustomMinimumSize = new Vector2(92, 44); menuButton.Name = "Menu"; menuButton.ZIndex = 95; AddChild(menuButton);
         settingsButton = UiKit.Button("Interface", () => Toggle(settingsWindow));
         settingsButton.ThemeTypeVariation = "GhostButton"; settingsButton.ZIndex = 95; AddChild(settingsButton);
@@ -300,7 +309,7 @@ public partial class SiderealUi : Control
     private DockWindow Window(string id, string title, Vector2 position, Vector2 size)
     {
         var window = new DockWindow(id, title, position, size); AddChild(window);
-        window.Closed += core.ReleaseControls; windows.Add(window); return window;
+        window.Closed += core.ReleaseControls; window.VisibilityChanged+=()=>{if(!window.IsVisibleInTree())itemInteraction?.CancelLocal();}; windows.Add(window); return window;
     }
 
     private void BuildWindows()
@@ -402,6 +411,7 @@ public partial class SiderealUi : Control
         if (header == null) return;
         layoutPasses++;
         var userScale = scaleOverride > 0 ? scaleOverride : palette.UiScale;
+        if(!Mathf.IsEqualApprox(Scale.X,userScale))itemInteraction?.CancelLocal();
         Scale = Vector2.One * userScale;
         Size = GetViewportRect().Size / userScale;
         UsableBounds = ResolveUsableBounds(userScale);
@@ -533,7 +543,7 @@ public partial class SiderealUi : Control
 
     private void Toggle(DockWindow window)
     {
-        core.ReleaseControls(); window.Visible = !window.Visible;
+        itemInteraction?.CancelLocal(); core.ReleaseControls(); window.Visible = !window.Visible;
         if (window.Visible)
         {
             if(window!=menu)menu.Hide();window.BringToFront();
@@ -549,7 +559,7 @@ public partial class SiderealUi : Control
         themeRoles=new {health=palette.Health.ToHtml(false),danger=palette.Danger.ToHtml(false)},
         inventoryVisible = inventoryWindow.Visible, equipmentVisible = equipmentWindow.Visible, menuOpen = menu.Visible, selectedMenuTab = menu.SelectedTab, navigationVisible = navigation.Visible, objectDetailsVisible = objectDetails.Visible,
         preferences = NativePreferences.Current.Snapshot, keyboardBlocked = BlocksKeyboardInput, pointerBlocked = BlocksPointerInput, cameraBlocked = BlocksCameraInput, dragging = inventoryWindow.InteractionActive,
-        itemDragging=inventory.InteractionActive,guiDragging=GetViewport().GuiIsDragging(),windowInteractions=windows.Where(w=>w.InteractionActive).Select(w=>w.LayoutKey).ToArray(),
+        itemInteraction=itemInteraction?.SmokeFacts(),itemDragging=inventory.InteractionActive,guiDragging=GetViewport().GuiIsDragging(),windowInteractions=windows.Where(w=>w.InteractionActive).Select(w=>w.LayoutKey).ToArray(),
         entry=new {entered,waitingForEntry,awaitingReceipt=entryAwaitingReceipt,joinAttempted=entryJoinAttempted,phase=core.EnterPhase,message=crewNotice.Text,returnVisible=entryReturn.Visible,retryVisible=entryRetry.Visible,enterDisabled=enterButton.Disabled},
         focus = GetViewport().GuiGetFocusOwner()?.Name.ToString(), hovered = GetViewport().GuiGetHoveredControl()?.Name.ToString(),
         inventoryX = inventoryWindow.GetGlobalRect().Position.X, inventoryY = inventoryWindow.GetGlobalRect().Position.Y,
@@ -694,12 +704,13 @@ public partial class SiderealUi : Control
 
     public bool HandleKey(Key key)
     {
-        if (key == Key.F3) { core.ReleaseControls(); menu.SelectTab("Graphics"); menu.Show(); menu.BringToFront(); return true; }
+        if (key == Key.R && itemInteraction?.Rotate()==true) return true;
+        if (key == Key.F3) { itemInteraction?.CancelLocal(); core.ReleaseControls(); menu.SelectTab("Graphics"); menu.Show(); menu.BringToFront(); return true; }
         if (key == Key.F6) { if (GetViewport().GuiGetFocusOwner() != null) GetViewport().GuiReleaseFocus(); else if(menuButton.IsVisibleInTree())menuButton.GrabFocus();else if(loginButton.IsVisibleInTree())loginButton.GrabFocus();else enterButton.GrabFocus(); return true; }
         if (key == Key.Escape)
         {
             core.ReleaseControls();
-            if (ItemDrag.Current != null || GetViewport().GuiIsDragging()) { GetViewport().GuiCancelDrag(); ItemDrag.Current = null; return true; }
+            if (itemInteraction?.Capturing==true || itemInteraction?.Animating==true || GetViewport().GuiIsDragging()) { GetViewport().GuiCancelDrag(); itemInteraction?.CancelLocal(); return true; }
             if (menu.Visible) { menu.Hide(); GetViewport().GuiReleaseFocus(); return true; }
             var top = windows.Where(w=>w.Visible).OrderByDescending(w=>w.ZIndex).FirstOrDefault();
             if (top != null) { top.Close(); GetViewport().GuiReleaseFocus(); return true; }

@@ -1,7 +1,7 @@
 # Sidereal Godot
 
 Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
-The 0.4.2 evaluation implements Dastari browser sign-in, persistent character entry, replicated
+The 0.4.3 evaluation implements Dastari browser sign-in, persistent character entry, replicated
 decks, walking, piloting, cruise, contextual interaction, combat input and EVA controls.
 The responsive blue-glass UI includes Tetris inventory, equipment, tooltips, ground pickup,
 scoped storage, draggable/resizable windows and saved theme, display and graphics preferences.
@@ -19,7 +19,11 @@ an independent theme color, and tooltips scale and fit the viewport. Source ligh
 material receiver/shadow classes are implemented. Source sky colors match both tested renderers,
 and ship/crew/camera motion shares the browser's smooth presentation timeline. Square equipment
 wells surround a larger rotatable preview; default paired windows fit the viewport while saved
-layouts remain intact. This is an ongoing parity build: stars/dust blending, family lighting/tone,
+layouts remain intact. Inventory supports click-to-hold, fractional grab anchors, rotation,
+dragging, double-click equip/stow and Shift transfer through one pointer controller. Cargo equip
+uses two server-confirmed stages; rejected or uncertain requests preserve accepted inventory.
+Mouse events retain their own positions under slow frames. Source-default clearcoat stays off.
+This is an ongoing parity build: stars/dust blending, family lighting/tone,
 some effect and editing interfaces, unsupported custom construction,
 asset streaming and Windows/GPU acceptance remain
 open. The [parity contract](https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity)
@@ -49,6 +53,8 @@ theme and layout. The editable default theme is `Ui/default_palette.tres`.
 The Windows agent can run focused tests with `dotnet run --project Tests/Tests.csproj`.
 Use WASD to walk relative to the camera, Shift to sprint, E to use nearby objects or a control seat,
 X for cruise or EVA suit hold, V for combat, mouse/left click to aim/fire, and R to reload.
+In inventory, click an item to hold it, R rotates, and a second click places it. Right click or
+Escape cancels holding; double click equips/stows and Shift click transfers to disclosed storage.
 I opens inventory, C character, N navigation, Tab deck/flight view, Z loot labels,
 and Escape cancels or opens the menu. Right drag orbits and the wheel zooms outside UI panels.
 For a real Dastari/Tailscale integration test against the separate fixture:

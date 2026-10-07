@@ -14,7 +14,9 @@ public static class SourceSurfaceFinish
         if(family==null||!Source.GetProperty("families").TryGetProperty(family,out var finish))return;
         float N(string key)=>finish.GetProperty(key).GetSingle();
         material.Metallic=N("metallic");material.Roughness=N("roughness");
-        material.ClearcoatEnabled=N("coat")>0;material.Clearcoat=N("coat");material.ClearcoatRoughness=N("coatRoughness");
+        // Pinned browser default keeps this optional lobe disabled (review-only ?coat=1).
+        // Retain the authored coefficients for a future explicit, qualified opt-in.
+        material.ClearcoatEnabled=false;material.Clearcoat=N("coat");material.ClearcoatRoughness=N("coatRoughness");
         // Godot uses F0=.16*specular^2 for dielectrics; Babylon uses the authored IOR and multiplier.
         var ior=N("ior");var f0=Math.Pow((ior-1)/(ior+1),2)*N("specular");material.MetallicSpecular=(float)Math.Clamp(Math.Sqrt(f0/.16),0,1);
         material.SetMeta("source_surface_family",family);material.SetMeta("source_environment_intensity",N("environment"));
