@@ -11,6 +11,9 @@ window/size/viewport_width=1280
 window/size/viewport_height=800
 window/stretch/mode="disabled"
 
+[editor]
+import/use_multiple_threads=false
+
 [dotnet]
 project/assembly_name="Sidereal.Godot"
 
