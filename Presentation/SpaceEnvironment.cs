@@ -31,6 +31,9 @@ public partial class SpaceEnvironment : Node3D
     private uint layers = 1;
     private MeshInstance3D skyMesh = null!;
     private ShaderMaterial skyMaterial = null!;
+    private readonly SourceDisplaySpace skyDisplay = new();
+    public string SkyDisplayStatus => skyDisplay.Status;
+    public SourceDisplaySpaceProfile SkyDisplayProfile => skyDisplay.Profile;
     private MeshInstance3D stars = null!;
     private MultiMeshInstance3D dust = null!;
     private ShaderMaterial dustMaterial = null!;
@@ -57,6 +60,11 @@ public partial class SpaceEnvironment : Node3D
         dust = new MultiMeshInstance3D { Name = "AcceptedVelocityWorldDust", Multimesh = multi, Layers = layers, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             MaterialOverride = dustMaterial, ExtraCullMargin=10000000 };
         AddChild(dust);
+    }
+    public override void _ExitTree()
+    {
+        skyMaterial?.SetShaderParameter("source_display_lut", default(Variant));
+        skyDisplay.Dispose();
     }
     public void Clear()
     {
@@ -96,6 +104,7 @@ public partial class SpaceEnvironment : Node3D
     /// feeds this solely from actor-filtered ReadBodies; it never writes world state.</summary>
     public void SyncBodySnapshot(Body[] snapshot,Camera3D camera,double originX,double originY,double elapsed,NativePreferencesSnapshot preferences)
     {
+        skyDisplay.Apply(skyMaterial,camera,GetViewport());
         AuthorizedBodies=snapshot.Where(Valid).DistinctBy(b=>b.Id).Take(8256).ToArray();
         PollRequests();
         var height = GetViewport().GetVisibleRect().Size.Y;
@@ -295,14 +304,16 @@ public partial class SpaceEnvironment : Node3D
     {
         // Order the backdrop before additive stars, dust and celestial halos. Giving
         // it an explicit alpha also keeps it out of the opaque depth prepass.
-        skyMaterial = new ShaderMaterial { RenderPriority = -128, Shader = new Shader { Code = SkyShader } }; skyMaterial.SetShaderParameter("nebula",GD.Load<Texture2D>(AssetRoot + "veil-nebula-v1.png")); skyMaterial.SetShaderParameter("nebula2",GD.Load<Texture2D>(AssetRoot + "orion-veil-v1.png"));
+        skyMaterial = new ShaderMaterial { RenderPriority = -128, Shader = new Shader { Code = SkyShader.Replace("// SOURCE_DISPLAY_ADAPTER",SourceDisplaySpace.Shader,StringComparison.Ordinal) } }; skyMaterial.SetShaderParameter("nebula",GD.Load<Texture2D>(AssetRoot + "veil-nebula-v1.png")); skyMaterial.SetShaderParameter("nebula2",GD.Load<Texture2D>(AssetRoot + "orion-veil-v1.png"));
         skyMesh = new MeshInstance3D { Name = "PinnedWorldDirectionalGalaxy", Mesh = new SphereMesh { Radius = 600,Height = 1200,RadialSegments = 48,Rings = 24 }, MaterialOverride = skyMaterial, Layers = layers, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, ExtraCullMargin = 10000000 }; AddChild(skyMesh);
     }
     private const string SkyShader = """
 shader_type spatial;
 render_mode unshaded,cull_front,depth_draw_never;
-uniform sampler2D nebula:source_color,filter_nearest,repeat_disable;
-uniform sampler2D nebula2:source_color,filter_nearest,repeat_disable;
+// The source samples encoded PNG values directly in its WebGL fragment path.
+uniform sampler2D nebula:filter_nearest,repeat_disable;
+uniform sampler2D nebula2:filter_nearest,repeat_disable;
+// SOURCE_DISPLAY_ADAPTER
 uniform vec3 tint; uniform vec3 tint2; uniform float gas_strength; uniform float seed;
 varying vec3 direction;
 float hash31(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
@@ -312,6 +323,6 @@ vec3 sky_plate(vec3 p,vec3 core){vec3 right=normalize(cross(core,vec3(0.,1.,0.))
 void vertex(){direction=VERTEX;POSITION=PROJECTION_MATRIX*MODELVIEW_MATRIX*vec4(VERTEX,1.);
 POSITION.z=CLIP_SPACE_FAR*POSITION.w;
 }
-void fragment(){vec3 p=normalize(direction);vec3 rpg=sky_plate(p,normalize(vec3(.74,-.58,.355)));vec3 down=sky_plate(p,normalize(vec3(-.20,-.96,-.18)));vec3 image=mix(texture(nebula,rpg.xy).rgb*rpg.z,texture(nebula,down.xy).rgb*down.z,smoothstep(.78,.97,-p.y));vec3 image2=mix(texture(nebula2,rpg.xy).rgb*rpg.z,texture(nebula2,down.xy).rgb*down.z,smoothstep(.78,.97,-p.y));float cloud=fbm(p*4.5+seed);float overhead=smoothstep(.25,.85,-p.y);float ribbon=max(exp(-pow(abs((p.y+.15+p.x*.45)/.36),2.))*.38,exp(-pow(abs((p.x*.55+p.z-.05)/.38),2.))*overhead);vec3 gas=mix(vec3(.03,.06,.18),vec3(.24,.035,.31),smoothstep(.35,.7,cloud));gas*=smoothstep(.2,.72,cloud)*(.4+.6*ribbon);vec3 color=vec3(.005,.008,.028)+gas*.55*gas_strength+(image*tint+image2*tint2)*.65;ALBEDO=floor(color*192.+.5)/192.;ALPHA=1.;}
+void fragment(){vec3 p=normalize(direction);vec3 rpg=sky_plate(p,normalize(vec3(.74,-.58,.355)));vec3 down=sky_plate(p,normalize(vec3(-.20,-.96,-.18)));vec3 image=mix(texture(nebula,rpg.xy).rgb*rpg.z,texture(nebula,down.xy).rgb*down.z,smoothstep(.78,.97,-p.y));vec3 image2=mix(texture(nebula2,rpg.xy).rgb*rpg.z,texture(nebula2,down.xy).rgb*down.z,smoothstep(.78,.97,-p.y));float cloud=fbm(p*4.5+seed);float overhead=smoothstep(.25,.85,-p.y);float ribbon=max(exp(-pow(abs((p.y+.15+p.x*.45)/.36),2.))*.38,exp(-pow(abs((p.x*.55+p.z-.05)/.38),2.))*overhead);vec3 gas=mix(vec3(.03,.06,.18),vec3(.24,.035,.31),smoothstep(.35,.7,cloud));gas*=smoothstep(.2,.72,cloud)*(.4+.6*ribbon);vec3 color=vec3(.005,.008,.028)+gas*.55*gas_strength+(image*tint+image2*tint2)*.65;ALBEDO=source_display_adapter(floor(color*192.+.5)/192.);ALPHA=1.;}
 """;
 }

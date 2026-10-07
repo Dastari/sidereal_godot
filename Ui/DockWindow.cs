@@ -9,6 +9,11 @@ public partial class DockWindow : Control
     public VBoxContainer Content { get; } = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
     public bool InteractionActive => dragging || edges != 0;
     public event Action? Closed;
+    public event Action? LayoutPreferenceChanged;
+    public bool HasUserLayout { get; private set; }
+    public bool TemporaryLayout { get; private set; }
+    public Vector2 PreferredPosition => preferredLoaded ? preferredPosition : InitialPosition;
+    public Vector2 PreferredSize => preferredLoaded ? preferredSize : InitialSize;
     [Export] public string LayoutKey { get; set; } = "panel";
     [Export] public string Caption { get; set; } = "PANEL";
     [Export] public Vector2 InitialPosition { get; set; } = new(40, 120);
@@ -20,6 +25,8 @@ public partial class DockWindow : Control
     private MarginContainer body = null!;
     private ScrollContainer? sidebar;
     private float sidebarWidth;
+    private Vector2 preferredPosition, preferredSize;
+    private bool preferredLoaded;
     private readonly Vector2 minimum = new(280, 180);
 
     public DockWindow() { MouseFilter = MouseFilterEnum.Stop; }
@@ -100,6 +107,8 @@ public partial class DockWindow : Control
         (p.X < 8 ? 1 : p.X > Size.X - 8 ? 2 : 0) | (p.Y < 8 ? 4 : p.Y > Size.Y - 8 ? 8 : 0);
     private void BeginDrag(int side)
     {
+        // A deliberate drag/resize adopts the displayed geometry as the user's choice.
+        TemporaryLayout = false; HasUserLayout = true;
         BringToFront(); dragging = side == 0; edges = side;
         mouseStart = GetParent<Control>().GetLocalMousePosition(); positionStart = Position; sizeStart = Size;
     }
@@ -145,19 +154,47 @@ public partial class DockWindow : Control
             Mathf.Clamp(Position.Y, bounds.Position.Y, Math.Max(bounds.Position.Y, bounds.End.Y - Size.Y)));
     }
 
-    public void ResetLayout() { Position = InitialPosition; Size = InitialSize; Clamp(); SaveLayout(); }
+    public void PresentTemporaryLayout(Vector2 position, Vector2 size)
+    {
+        if (HasUserLayout || InteractionActive || !position.IsFinite() || !size.IsFinite()) return;
+        TemporaryLayout = true; Position = position; Size = size; Clamp();
+    }
+    public void RestorePreferredLayout()
+    {
+        if (!TemporaryLayout || InteractionActive) return;
+        TemporaryLayout = false; Position = PreferredPosition; Size = PreferredSize; Clamp();
+    }
+    public void ResetLayout()
+    {
+        TemporaryLayout = false; HasUserLayout = false; preferredLoaded = true;
+        preferredPosition = InitialPosition; preferredSize = InitialSize;
+        Position = InitialPosition; Size = InitialSize; Clamp(); SaveLayout();
+    }
     public void CancelInteraction(){if(!InteractionActive)return;dragging=false;edges=0;Clamp();SaveLayout();}
     public void Close(){CancelInteraction();Hide();SaveLayout();Closed?.Invoke();}
     private void LoadLayout()
     {
-        var file = new ConfigFile(); if (file.Load("user://ui-layout.cfg") != Error.Ok) { Clamp(); return; }
-        var pos = file.GetValue(LayoutKey, "position", InitialPosition).AsVector2(); var size = file.GetValue(LayoutKey, "size", InitialSize).AsVector2();
-        if (pos.IsFinite() && size.IsFinite()) { Position = pos; Size = size; } Clamp();
+        var file = new ConfigFile();
+        if (file.Load("user://ui-layout.cfg") == Error.Ok && file.HasSection(LayoutKey))
+        {
+            var pos = file.GetValue(LayoutKey, "position", InitialPosition).AsVector2(); var size = file.GetValue(LayoutKey, "size", InitialSize).AsVector2();
+            if (pos.IsFinite() && size.IsFinite())
+            {
+                Position = pos; Size = size;
+                // Older saved profiles have no marker; preserve them as explicit layouts.
+                var marker = file.GetValue(LayoutKey, "user_layout", true);
+                HasUserLayout = marker.VariantType != Variant.Type.Bool || marker.AsBool();
+            }
+        }
+        preferredPosition = Position; preferredSize = Size; preferredLoaded = true; Clamp();
     }
     private void SaveLayout()
     {
+        if (HasUserLayout) { preferredPosition = Position; preferredSize = Size; }
         var file = new ConfigFile(); file.Load("user://ui-layout.cfg");
-        file.SetValue(LayoutKey, "position", Position); file.SetValue(LayoutKey, "size", Size); file.Save("user://ui-layout.cfg");
+        file.SetValue(LayoutKey, "position", PreferredPosition); file.SetValue(LayoutKey, "size", PreferredSize);
+        file.SetValue(LayoutKey, "user_layout", HasUserLayout); file.Save("user://ui-layout.cfg");
+        LayoutPreferenceChanged?.Invoke();
     }
     public override void _ExitTree()
     {

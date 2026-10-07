@@ -81,18 +81,19 @@ public partial class SiderealUi : Control
         menu.Hide();window.Show();window.Clamp();window.BringToFront();core.ReleaseControls();return true;
     }
     public bool BlocksKeyboardInput => !WorldVisible || menu.Visible || inventoryWindow.Visible || equipmentWindow.Visible || storageWindows.Values.Any(w=>w.Visible) ||
-        inventory.InteractionActive || windows.Exists(w => w.Visible && w.InteractionActive) || GetViewport().GuiGetFocusOwner() != null;
-    public bool BlocksPointerInput => !WorldVisible || menu.Visible || windows.Exists(w=>w.Visible&&w.InteractionActive) || PointerOverUi() || GetViewport().GuiIsDragging();
-    public bool BlocksCameraInput => !WorldVisible || menu.Visible || inventory.InteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || GetViewport().GuiIsDragging() || PointerOverUi();
-    public bool GameplayShortcutBlocked => menu.Visible || inventory.InteractionActive || windows.Exists(window => window.Visible && window.InteractionActive);
+        inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(w => w.Visible && w.InteractionActive) || GetViewport().GuiGetFocusOwner() != null;
+    public bool BlocksPointerInput => !WorldVisible || menu.Visible || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || PointerOverUi() || GetViewport().GuiIsDragging();
+    public bool BlocksCameraInput => !WorldVisible || menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || GetViewport().GuiIsDragging() || PointerOverUi();
+    public bool GameplayShortcutBlocked => menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(window => window.Visible && window.InteractionActive);
     public bool WorldVisible => !demo && entered && core.Character?.Connected == true;
     public void CancelInteractions()
     {
         foreach(var window in windows)window.CancelInteraction();
+        equipment.CancelPreviewInteraction();
         GetViewport().GuiCancelDrag();ItemDrag.Released(this);GetViewport().GuiReleaseFocus();core.ReleaseControls();
     }
     public bool BlocksWorldInput => !WorldVisible || menu.Visible || windows.Exists(w => w.Visible && w.InteractionActive) ||
-        inventory.InteractionActive || GetViewport().GuiIsDragging() || GetViewport().GuiGetFocusOwner() != null ||
+        inventory.InteractionActive || equipment.PreviewInteractionActive || GetViewport().GuiIsDragging() || GetViewport().GuiGetFocusOwner() != null ||
         GetViewport().GuiGetHoveredControl() != null || PointerOverUi();
 
     private bool PointerOverUi()
@@ -135,7 +136,7 @@ public partial class SiderealUi : Control
         footer.Visible = demo || worldPreview;
         Layout();
         inventoryWindow.Visible = demo && !worldPreview;
-        equipmentWindow.Visible = demo && !worldPreview && UsableBounds.Size.X >= 960;
+        equipmentWindow.Visible = demo && !worldPreview && (CanPairDefaultWindows || UsableBounds.Size.X >= 960);
         settingsWindow.Visible = OS.GetCmdlineUserArgs().Contains("--ui-settings");
         menu.Hide();
         var previewTab=OS.GetCmdlineUserArgs().FirstOrDefault(arg=>arg.StartsWith("--ui-menu=",StringComparison.Ordinal))?.Split('=',2)[1];
@@ -204,7 +205,7 @@ public partial class SiderealUi : Control
 
         context = UiKit.Label("", 14); context.HorizontalAlignment = HorizontalAlignment.Center;
         context.MouseFilter = MouseFilterEnum.Ignore; context.ThemeTypeVariation="MutedLabel"; AddChild(context);
-        menuButton = UiKit.Button("Menu", () => { core.ReleaseControls(); menu.Visible = !menu.Visible; });
+        menuButton = UiKit.Button("Menu", () => { core.ReleaseControls(); menu.Visible = !menu.Visible; if (menu.Visible) menu.BringToFront(); });
         menuButton.CustomMinimumSize = new Vector2(92, 44); menuButton.Name = "Menu"; menuButton.ZIndex = 95; AddChild(menuButton);
         settingsButton = UiKit.Button("Interface", () => Toggle(settingsWindow));
         settingsButton.ThemeTypeVariation = "GhostButton"; settingsButton.ZIndex = 95; AddChild(settingsButton);
@@ -307,7 +308,9 @@ public partial class SiderealUi : Control
         inventoryWindow = Window("inventory", "INVENTORY", new Vector2(26, 176), new Vector2(680, 485));
         inventory = new InventoryWorkspace(core, demo); inventoryWindow.Content.AddChild(inventory);
         inventory.ContainerOpenRequested+=id=>OpenContainer(id);
-        equipmentWindow = Window("equipment", "CHARACTER & EQUIPMENT", new Vector2(727, 176), new Vector2(523, 485));
+        equipmentWindow = Window("equipment", "CHARACTER & EQUIPMENT", new Vector2(727, 176), new Vector2(620, 680));
+        inventoryWindow.VisibilityChanged += QueueLayout; equipmentWindow.VisibilityChanged += QueueLayout;
+        inventoryWindow.LayoutPreferenceChanged += QueueLayout; equipmentWindow.LayoutPreferenceChanged += QueueLayout;
         equipment = new EquipmentPanel(core, demo); equipmentWindow.Content.AddChild(equipment);
         equipment.InspectRequested+=id=>{core.ReleaseControls();inventoryWindow.Show();inventoryWindow.BringToFront();inventory.SelectItem(id);};
         settingsWindow = Window("interface", "Theme colours", new Vector2(400, 115), new Vector2(445, 510));
@@ -503,12 +506,41 @@ public partial class SiderealUi : Control
         WorldPresentationBounds = gameplayShell && worldArea.Size.X > 0 && worldArea.Size.Y > 0
             ? GetGlobalTransformWithCanvas() * worldArea : default;
         foreach (var window in windows) window.Clamp();
+        LayoutDefaultPair();
+    }
+
+    private bool CanPairDefaultWindows => inventoryWindow != null && equipmentWindow != null &&
+        !inventoryWindow.HasUserLayout && !equipmentWindow.HasUserLayout && WindowBounds.Size.X >= EquipmentPairMetrics.MinimumWidth;
+    private void LayoutDefaultPair()
+    {
+        if (inventoryWindow.InteractionActive || equipmentWindow.InteractionActive) return;
+        if (inventoryWindow.Visible && equipmentWindow.Visible && CanPairDefaultWindows)
+        {
+            var metrics = EquipmentPairMetrics.Create(WindowBounds.Position.X, WindowBounds.Size.X,
+                inventoryWindow.PreferredPosition.X, equipmentWindow.PreferredPosition.X,
+                inventoryWindow.PreferredSize.X, equipmentWindow.PreferredSize.X);
+            if (metrics is { } pair)
+            {
+                inventoryWindow.PresentTemporaryLayout(new Vector2((float)pair.InventoryX, inventoryWindow.PreferredPosition.Y),
+                    new Vector2((float)pair.InventoryWidth, inventoryWindow.PreferredSize.Y));
+                equipmentWindow.PresentTemporaryLayout(new Vector2((float)pair.EquipmentX, equipmentWindow.PreferredPosition.Y),
+                    new Vector2((float)pair.EquipmentWidth, equipmentWindow.PreferredSize.Y));
+                return;
+            }
+        }
+        inventoryWindow.RestorePreferredLayout(); equipmentWindow.RestorePreferredLayout();
     }
 
     private void Toggle(DockWindow window)
     {
         core.ReleaseControls(); window.Visible = !window.Visible;
-        if (window.Visible) { if(window!=menu)menu.Hide();window.BringToFront(); if (UsableBounds.Size.X < 960) foreach (var other in windows) if (other != window) other.Hide(); }
+        if (window.Visible)
+        {
+            if(window!=menu)menu.Hide();window.BringToFront();
+            if (UsableBounds.Size.X < 960)
+                foreach (var other in windows)
+                    if (other != window && !(CanPairDefaultWindows && (window == inventoryWindow || window == equipmentWindow) && (other == inventoryWindow || other == equipmentWindow))) other.Hide();
+        }
     }
     private void HideGameWindows() { inventoryWindow.Hide();equipmentWindow.Hide();navigation?.Hide();objectDetails?.Hide();foreach(var window in storageWindows.Values.ToArray())window.Close();core.SelectedPlacementId=null; }
     public void ShowMessage(string text) => notice = text;
@@ -531,7 +563,9 @@ public partial class SiderealUi : Control
         inventory = demo || worldPreview ? DemoInventory.Snapshot : core.Inventory,
         grids = Descendants(inventory).OfType<InventoryGrid>().Select(grid => grid.SmokeGeometry()).ToArray(),
         hotbar = hotbar.VisualSlots.Select(Rectangle).ToArray(),
-        equipment = Descendants(equipment).OfType<EquipmentSlot>().Select(Rectangle).ToArray(),
+        equipment = equipment.VisualSlots.Select(Rectangle).ToArray(), equipmentSlots = equipment.SlotFacts, equipmentLayout = equipment.LayoutFacts,
+        equipmentPairLayout = new { active = inventoryWindow.Visible && equipmentWindow.Visible && inventoryWindow.TemporaryLayout && equipmentWindow.TemporaryLayout,
+            inventoryUserLayout = inventoryWindow.HasUserLayout, equipmentUserLayout = equipmentWindow.HasUserLayout },
         telemetryChildren = fullTelemetry.GetChildren().OfType<Control>().Select(control => new {
             name = control.Name.ToString(), minimum = new { width = control.GetCombinedMinimumSize().X, height = control.GetCombinedMinimumSize().Y }, rect = Rectangle(control) }).ToArray(),
         telemetryMinimum = new { width = hud.GetCombinedMinimumSize().X, height = hud.GetCombinedMinimumSize().Y },
@@ -707,5 +741,24 @@ public partial class SiderealUi : Control
         header.MinimumSizeChanged -= QueueLayout;
         login.MinimumSizeChanged -= QueueLayout;
         status.MinimumSizeChanged -= QueueLayout;
+    }
+}
+
+/// <summary>Temporary geometry for untouched default frames; user layouts remain independent.</summary>
+public readonly record struct EquipmentPairMetrics(double InventoryX, double InventoryWidth, double EquipmentX, double EquipmentWidth)
+{
+    public const double MinimumWidth = 572;
+    public static EquipmentPairMetrics? Create(double left, double width, double preferredInventoryX, double preferredEquipmentX,
+        double preferredInventoryWidth, double preferredEquipmentWidth)
+    {
+        if (!double.IsFinite(left) || !double.IsFinite(width) || width < MinimumWidth) return null;
+        var right = left + width;
+        if (!double.IsFinite(right)) return null;
+        var inventoryX = Math.Clamp(double.IsFinite(preferredInventoryX) ? preferredInventoryX : left, left, right - MinimumWidth);
+        var inventoryWidth = Math.Clamp(double.IsFinite(preferredInventoryWidth) ? preferredInventoryWidth : 680, 280, right - inventoryX - 292);
+        var equipmentWidth = Math.Clamp(double.IsFinite(preferredEquipmentWidth) ? preferredEquipmentWidth : 620, 280, right - inventoryX - inventoryWidth - 12);
+        var equipmentX = Math.Clamp(double.IsFinite(preferredEquipmentX) ? preferredEquipmentX : inventoryX + inventoryWidth + 12,
+            inventoryX + inventoryWidth + 12, right - equipmentWidth);
+        return new(inventoryX, inventoryWidth, equipmentX, equipmentWidth);
     }
 }

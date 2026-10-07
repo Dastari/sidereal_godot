@@ -4,6 +4,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json;
 using Sidereal.Native;
+using Sidereal.Native.Input;
 
 /// <summary>Own authorized interior plus public space presentation. No simulation authority.</summary>
 public partial class ReplicatedWorld : Node3D
@@ -20,6 +21,10 @@ public partial class ReplicatedWorld : Node3D
     private CrewPresenter crew = null!;
     private SpaceGroundItems ground = null!;
     private SourceLightUnitsRig lighting = null!;
+    private readonly OwnedMotionPresentation ownedMotion = new();
+    private OwnedMotionFrame? ownedDisplay;
+    private ulong ownedGeneration;
+    private bool presentationDeclined;
     private string? layoutKey;
     private bool preview, framed, interior = true, cameraChanged;
     private Rect2 requestedPresentationBounds;
@@ -57,7 +62,7 @@ public partial class ReplicatedWorld : Node3D
     public string GraphicsStatus => $"{RenderingServer.GetCurrentRenderingMethod()} / {RenderingServer.GetCurrentRenderingDriverName()} · {(preferences.Antialiasing == "off" ? "AA off" : $"MSAA {preferences.MsaaSamples}×")} · {preferences.RenderScale:P0} render scale · authored sockets {assembly?.EffectiveLocalLights??0}/{(RenderingServer.GetCurrentRenderingMethod()=="gl_compatibility"?8:32)} active · source keys/rims 7/{SourceLightUnits.DirectionalLimit} · glow {(Camera.Environment?.GlowEnabled==true?"on":"off")}";
     public SpaceEnvironment Space => space;
     public CombatBodyAnchor? CombatBody(string id)=>crew.CombatAnchor(id);
-    public object SpaceFacts => new { bodies = space.RenderedBodyCount, retainedBodies = space.RetainedBodyCount, asteroids = space.AsteroidCount, stars = 8192, remoteShips = remote.RepresentedCount, fullRemoteShips = remote.FullCount, ownJets = ownExhaust.LitCount, readyCrew = crew.ReadyCount, pendingCrew = crew.PendingCount, unsupportedCrew = crew.UnsupportedCount, observedBody = ObservedBodyId, interior, vista = space.ActiveVista, cameraAlpha = alpha, cameraBeta = beta, initialDeckHalfExtent=initialDeckZoom, initialFlightHalfExtent=initialFlightZoom, displayedDeckHalfExtent=shownDeckZoom, displayedFlightHalfExtent=shownFlightZoom, frameCenterX=assembly?.CameraFrame.CenterX, frameCenterY=assembly?.CameraFrame.CenterY, fovRadians = SpaceMath.FieldOfView, originX = RenderOriginX, originY = RenderOriginY, cameraNear=Camera.Near, cameraFar=Camera.Far, renderer=RenderingServer.GetCurrentRenderingMethod(), driver=RenderingServer.GetCurrentRenderingDriverName(), glow=Camera.Environment?.GlowEnabled, lighting=lighting.Facts, authoredSockets=assembly?.EffectiveLocalLights??0,nativePracticalNodes=assembly?.EffectiveNativeLocalLights??0 };
+    public object SpaceFacts => new { bodies = space.RenderedBodyCount, retainedBodies = space.RetainedBodyCount, asteroids = space.AsteroidCount, stars = 8192, remoteShips = remote.RepresentedCount, fullRemoteShips = remote.FullCount, ownJets = ownExhaust.LitCount, readyCrew = crew.ReadyCount, pendingCrew = crew.PendingCount, unsupportedCrew = crew.UnsupportedCount, observedBody = ObservedBodyId, interior, vista = space.ActiveVista,skyDisplayStatus=space.SkyDisplayStatus,skyDisplayProfile=space.SkyDisplayProfile.ToString(), cameraAlpha = alpha, cameraBeta = beta, initialDeckHalfExtent=initialDeckZoom, initialFlightHalfExtent=initialFlightZoom, displayedDeckHalfExtent=shownDeckZoom, displayedFlightHalfExtent=shownFlightZoom, frameCenterX=assembly?.CameraFrame.CenterX, frameCenterY=assembly?.CameraFrame.CenterY, fovRadians = SpaceMath.FieldOfView, originX = RenderOriginX, originY = RenderOriginY, cameraNear=Camera.Near, cameraFar=Camera.Far, renderer=RenderingServer.GetCurrentRenderingMethod(), driver=RenderingServer.GetCurrentRenderingDriverName(), glow=Camera.Environment?.GlowEnabled, ownedMotion=ownedDisplay,ownedYaw=crew.OwnYaw,lighting=lighting.Facts, authoredSockets=assembly?.EffectiveLocalLights??0,nativePracticalNodes=assembly?.EffectiveNativeLocalLights??0 };
 
     public override void _Ready()
     {
@@ -114,21 +119,21 @@ public partial class ReplicatedWorld : Node3D
     }
     public Vector2? ScreenToDeckPoint(Vector2 physical)
     {
-        if (!Visible || assembly == null || !physical.IsFinite()) return null;
+        if (presentationDeclined || !Visible || assembly == null || !physical.IsFinite()) return null;
         var ray = Camera.ProjectRayNormal(physical); var origin = Camera.ProjectRayOrigin(physical); if (Math.Abs(ray.Y) < 1e-6) return null;
         var distance = ((float)standingElevation - origin.Y) / ray.Y; if (distance < 0 || distance > 10000) return null;
         var local = shipRoot.GlobalTransform.AffineInverse() * (origin + ray * distance); return new Vector2(local.X,-local.Z);
     }
     public ReplicatedWorldAssembly.Hit? Pick(Vector2 physical)
     {
-        if(!Visible||assembly==null||!physical.IsFinite())return null;
+        if(presentationDeclined||!Visible||assembly==null||!physical.IsFinite())return null;
         var inverse=shipRoot.GlobalTransform.AffineInverse();var hit=assembly.Pick(inverse*Camera.ProjectRayOrigin(physical),inverse.Basis*Camera.ProjectRayNormal(physical));
         return hit is { } value&&placementIdentities.TryGetValue(value.PlacementId,out var identity)?value with {PlacementId=identity}:hit;
     }
     public readonly record struct GroundLabel(string Id,string DefinitionId,bool Reachable,Vector2 Position);
     public GroundLabel[] GroundItemLabels(ClientCore core)
     {
-        if(!Visible||preview)return Array.Empty<GroundLabel>();
+        if(presentationDeclined||!Visible||preview)return Array.Empty<GroundLabel>();
         var viewport=GetViewport().GetVisibleRect();
         return SpaceGroundItems.ReadRows(core,interior).Select(r=>
         {
@@ -149,10 +154,10 @@ public partial class ReplicatedWorld : Node3D
     public static ReplicatedWorldAssembly BuildAssembly(string documentJson, string furnishingsJson, string? deckId, uint layers = WorldLayer, bool cutaway = true) => new(Catalog.Match(documentJson,deckId),furnishingsJson,layers,cutaway);
     public void Sync(ClientCore core, double delta, bool visible)
     {
-        Visible = visible; Camera.Current = visible;
+        Visible = visible; Camera.Current = visible;presentationDeclined=false;
         GameplayReady=!preview&&core.Connection!=null&&core.Character!=null&&core.Alive&&(core.Location!=null||core.Eva!=null);
         if (!preview && core.Connection == null && layoutKey!=null) { ClearAssembly(); Status = "Awaiting your replicated ship."; }
-        if (!visible) return; elapsed += preferences.ReducedMotion ? 0 : Math.Max(0,delta);
+        if (!visible) { ownedMotion.Clear();ownedDisplay=null;return; } elapsed += preferences.ReducedMotion ? 0 : Math.Max(0,delta);
         interior = preview || core.InteriorView&&core.Eva==null;
         var exterior=core.SpatialReady?core.Connection?.Db.VisibleShipDescriptions.Iter().FirstOrDefault(d=>d.ShipId==core.CurrentPresentedShip?.Id):null;
         var publicPrefab=exterior?.PublishedExteriorAssetId is { } asset&&asset.StartsWith("prefab:",StringComparison.Ordinal)?asset[7..]:null;
@@ -177,26 +182,52 @@ public partial class ReplicatedWorld : Node3D
         if((core.Eva!=null)!=evaShown){evaShown=core.Eva!=null;if(evaShown){beforeEvaZoom=flightZoom;flightZoom=7;}else if(beforeEvaZoom is { } restored){flightZoom=restored;beforeEvaZoom=null;}}
         var authorizedBodies = SpaceEnvironment.ReadBodies(core); var focus = authorizedBodies.FirstOrDefault(b => b.Id == ObservedBodyId);
         if (ObservedBodyId != null && focus.Id == null) ObservedBodyId = null;
-        RenderOriginX = ObservedBodyId == null ? core.Eva?.X??vessel?.X ?? 0 : focus.X; RenderOriginY = ObservedBodyId == null ? core.Eva?.Y??vessel?.Y ?? 0 : focus.Y;
-        shipRoot.Position = new Vector3((float)((vessel?.X ?? 0)-RenderOriginX),0,-(float)((vessel?.Y ?? 0)-RenderOriginY));
-        var heading = preview ? 2.9 : vessel?.Heading ?? 0; shipRoot.Rotation = new Vector3(0,(float)heading,0);
         var actor = core.Character; standingElevation = core.Location?.StandingElevationM ?? .1875;
-        ActorInputPosition=actor==null?Vector2.Zero:new Vector2((float)actor.LocalX,(float)actor.LocalY);
+        var admission=core.Connection?.Db.OwnWorldAdmission.Iter().FirstOrDefault(row=>row.CharacterId==actor?.Id);
+        var ownedContext=!preview&&core.Eva==null&&vessel is {Owned:true}&&actor?.Connected==true&&core.SharedAdmissionReady&&
+            core.Location?.InstanceId==core.Instance?.Id&&core.Instance!=null&&admission?.ShipId==vessel.Id;
+        ownedDisplay=ownedContext?ownedMotion.Step(new(core.Connection!.Identity?.ToString()??"",actor!.Id,vessel!.Id,core.Instance!.Id,core.Location!.VisitId,
+            admission!.SystemId+"/"+admission.ShipId),new(vessel.X,vessel.Y,vessel.Heading,core.Seat?.LocalX??actor.LocalX,core.Seat?.LocalY??actor.LocalY,
+            interior,preferences.ReducedMotion,core.Seat?.StandingElevationM??standingElevation,core.Resting||core.IsPiloting,crew.OwnSeatLift(core),SupportElevationM:core.Seat?.StandingElevationM??standingElevation),delta):ownedMotion.Step(null,null,delta);
+        if(ownedContext&&ownedDisplay==null)
+        {
+            presentationDeclined=true;GameplayReady=false;ActorInputPosition=Vector2.Zero;characterMarker.Visible=false;shipRoot.Visible=false;
+            crew.Clear();space.Clear();remote.Clear();ground.Clear();ownExhaust.Clear();
+            Status=ownedMotion.UnsupportedReason??"Owned presentation is unavailable.";return;
+        }
+        if(ownedDisplay is {} fresh&&fresh.ContextGeneration!=ownedGeneration)
+        {
+            ownedGeneration=fresh.ContextGeneration;framed=false;cameraChanged=true;orbit=.45;
+            ObservedBodyId=null;observeAlpha=.45;observeBeta=SpaceMath.DeckBeta;observeRatio=shownObserveRatio=5;
+            deckZoom=shownDeckZoom=initialDeckZoom;flightZoom=shownFlightZoom=initialFlightZoom;
+        }
+        var presentedX=ownedDisplay?.X??vessel?.X??0;var presentedY=ownedDisplay?.Y??vessel?.Y??0;
+        RenderOriginX = ObservedBodyId == null ? core.Eva?.X??presentedX : focus.X; RenderOriginY = ObservedBodyId == null ? core.Eva?.Y??presentedY : focus.Y;
+        shipRoot.Position = new Vector3((float)(presentedX-RenderOriginX),0,-(float)(presentedY-RenderOriginY));
+        var heading = preview ? 2.9 : ownedDisplay?.Heading??vessel?.Heading??0; shipRoot.Rotation = new Vector3(0,(float)heading,0);
+        ActorInputPosition=actor==null?Vector2.Zero:new Vector2((float)(ownedDisplay?.LocalX??actor.LocalX),(float)(ownedDisplay?.LocalY??actor.LocalY));
         if(core.Eva is { } eva){var local=shipRoot.Transform.AffineInverse()*new Vector3((float)(eva.X-RenderOriginX),(float)standingElevation,-(float)(eva.Y-RenderOriginY));ActorInputPosition=new Vector2(local.X,-local.Z);}
         characterMarker.Visible = !preview && actor != null && !core.IsPiloting && interior;
-        if (actor != null) characterMarker.Position = new Vector3((float)actor.LocalX,(float)standingElevation+.035f,-(float)actor.LocalY);
+        if (actor != null) characterMarker.Position = ownedDisplay is {} markerFrame ? new Vector3((float)markerFrame.BodyLocalPosition.X,(float)markerFrame.BodyLocalPosition.Y+.035f,(float)markerFrame.BodyLocalPosition.Z) : new Vector3((float)actor.LocalX,(float)standingElevation+.035f,-(float)actor.LocalY);
         var frameCenter=assembly?.CameraFrame;
         var target = frameCenter is { } initialFrame ? shipRoot.Transform * new Vector3((float)initialFrame.CenterX,(float)(standingElevation+.8*blend),-(float)initialFrame.CenterY) : Vector3.Zero;
         if(core.Eva is { } body)target=new Vector3((float)(body.X-RenderOriginX),(float)standingElevation,-(float)(body.Y-RenderOriginY));
-        var instant = !framed || cameraChanged || preferences.ReducedMotion; var factor = instant ? 1 : 1-Math.Exp(-Math.Min(delta,.1)*6); cameraChanged = false;
-        blend = interior ? SpaceMath.Ease(blend,1,delta,6) : SpaceMath.Ease(blend,0,delta,6); if (instant) blend = interior ? 1 : 0;
-        shownDeckZoom = preferences.ReducedMotion ? deckZoom : SpaceMath.Ease(shownDeckZoom,deckZoom,delta); shownFlightZoom = preferences.ReducedMotion ? flightZoom : SpaceMath.Ease(shownFlightZoom,flightZoom,delta);
-        var wantedAlpha = interior ? Math.PI-heading+orbit : Math.PI/2; alpha += SpaceMath.AngleDelta(alpha,wantedAlpha) * factor; beta = SpaceMath.Ease(beta,interior?SpaceMath.DeckBeta:core.Eva!=null?.22:.015,instant?10:delta,6);
-        if(core.Eva==null&&frameCenter is { } sourceFrame){var actorBlend=actor==null?0:blend*SpaceMath.DeckActorWeight(shownDeckZoom,initialDeckZoom);target=shipRoot.Transform*new Vector3((float)(sourceFrame.CenterX*(1-actorBlend)+(actor?.LocalX??0)*actorBlend),(float)(standingElevation+.8*blend),-(float)(sourceFrame.CenterY*(1-actorBlend)+(actor?.LocalY??0)*actorBlend));}
+        var frameDelta=ownedDisplay?.DeltaSeconds??Math.Clamp(delta,0,.1);
+        var instant = !framed || cameraChanged || preferences.ReducedMotion; var factor = instant ? 1 : 1-Math.Exp(-frameDelta*6); cameraChanged = false;
+        blend = interior ? SpaceMath.Ease(blend,1,frameDelta,6) : SpaceMath.Ease(blend,0,frameDelta,6); if (instant) blend = interior ? 1 : 0;
+        shownDeckZoom = preferences.ReducedMotion ? deckZoom : SpaceMath.Ease(shownDeckZoom,deckZoom,frameDelta); shownFlightZoom = preferences.ReducedMotion ? flightZoom : SpaceMath.Ease(shownFlightZoom,flightZoom,frameDelta);
+        var wantedAlpha = interior ? Math.PI-heading+orbit : Math.PI/2; alpha += SpaceMath.AngleDelta(alpha,wantedAlpha) * factor; beta = SpaceMath.Ease(beta,interior?SpaceMath.DeckBeta:core.Eva!=null?.22:.015,instant?10:frameDelta,6);
+        if(core.Eva==null&&frameCenter is { } sourceFrame)
+        {
+            var actorBlend=actor==null?0:blend*SpaceMath.DeckActorWeight(shownDeckZoom,initialDeckZoom);
+            var bodyX=ownedDisplay?.BodyLocalPosition.X??actor?.LocalX??0;var bodyY=-(ownedDisplay?.BodyLocalPosition.Z??-actor?.LocalY??0);
+            target=shipRoot.Transform*new Vector3((float)(sourceFrame.CenterX*(1-actorBlend)+bodyX*actorBlend),
+                (float)((ownedDisplay?.BodyLocalPosition.Y??standingElevation)+.8*blend),-(float)(sourceFrame.CenterY*(1-actorBlend)+bodyY*actorBlend));
+        }
         var viewport = GetViewport().GetVisibleRect(); var available = requestedPresentationBounds.Size.X > 0 ? requestedPresentationBounds.Intersection(viewport) : viewport; if (available.Size.X < 1 || available.Size.Y < 1) available = viewport; PresentationBounds = available;
         var half = shownFlightZoom*(1-blend)+shownDeckZoom*blend;
         var radius = half / Math.Tan(SpaceMath.FieldOfView/2);
-        if (ObservedBodyId != null) { target = new Vector3(0,(float)focus.Height,0); alpha = observeAlpha; beta = observeBeta; shownObserveRatio = preferences.ReducedMotion ? observeRatio : SpaceMath.Ease(shownObserveRatio,observeRatio,delta); var visualRadius = focus.Radius*(focus.Kind=="star"?2.1/Math.Min(1,Math.Max(.1,viewport.Size.X/viewport.Size.Y)):1); radius = Math.Max(8,visualRadius*shownObserveRatio); }
+        if (ObservedBodyId != null) { target = new Vector3(0,(float)focus.Height,0); alpha = observeAlpha; beta = observeBeta; shownObserveRatio = preferences.ReducedMotion ? observeRatio : SpaceMath.Ease(shownObserveRatio,observeRatio,frameDelta); var visualRadius = focus.Radius*(focus.Kind=="star"?2.1/Math.Min(1,Math.Max(.1,viewport.Size.X/viewport.Size.Y)):1); radius = Math.Max(8,visualRadius*shownObserveRatio); }
         var displacement = new Vector3((float)(Math.Cos(alpha)*Math.Sin(beta)*radius),(float)(Math.Cos(beta)*radius),(float)(Math.Sin(alpha)*Math.Sin(beta)*radius));
         Camera.HOffset = Camera.VOffset = 0; Camera.Position = target+displacement; Camera.LookAt(target,Vector3.Up); Camera.Near = (float)Math.Max(.1,radius*.02); Camera.Far = (float)Math.Max(1600,radius+1600);
         var center = available.GetCenter()-viewport.Position; var projectedHalf = radius*Math.Tan(SpaceMath.FieldOfView/2);
@@ -208,7 +239,7 @@ public partial class ReplicatedWorld : Node3D
         if(vessel is {Owned:false} && assembly!=null)ownExhaust.SyncRemote(core,vessel.Id,assembly.PrefabId,assembly.PrefabRevision,elapsed,preferences.Glow);
         else ownExhaust.SyncOwn(core,assembly?.PrefabId,assembly?.PrefabRevision,assembly?.Theme,elapsed,preferences.Glow);
         crew.ReducedMotion=preferences.ReducedMotion;
-        crew.ConfigureFrame(shipRoot,RenderOriginX,RenderOriginY,standingElevation,WorldLayer,interior); crew.Sync(core,elapsed);
+        crew.ConfigureFrame(shipRoot,RenderOriginX,RenderOriginY,standingElevation,WorldLayer,interior,ownedDisplay); crew.Sync(core,elapsed);
         ground.Sync(core,shipRoot,interior&&!preview,WorldLayer,preferences);
         if (core.Character != null && crew.HasReady(core.Character.Id)) characterMarker.Visible = false;
         var star = space.AuthorizedBodies.FirstOrDefault(b => b.Appearance == "yellow-main-sequence-r013");

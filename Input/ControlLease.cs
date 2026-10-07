@@ -26,7 +26,7 @@ public sealed class ControlLease
             Held = false; releasePending = true; deadline = now() + .5;
             try { release(); } catch { FailSocket(); }
         }
-        Tick();
+        Reconcile();
     }
     public void Tick()
     {
@@ -38,7 +38,14 @@ public sealed class ControlLease
             error(claimPending ? "Movement control confirmation timed out. Reconnecting." : "Movement control release timed out. Reconnecting.");
             FailSocket(); return;
         }
-        if (!Wanted || Held || claimPending || releasePending || now() < retryAt) return;
+        Reconcile();
+    }
+    // Input/focus and reducer callbacks may run before the owner's SDK pump.
+    // Demand transitions send immediately; only Tick after FrameTick expires
+    // unacknowledged operations, preserving the existing retirement deadlines.
+    private void Reconcile()
+    {
+        if (disposed || !Wanted || Held || claimPending || releasePending || now() < retryAt) return;
         claimPending = true; deadline = now() + 1.5;
         try { claim(); } catch { FailSocket(); }
     }
@@ -62,7 +69,7 @@ public sealed class ControlLease
     {
         if (disposed || !releasePending) return;
         releasePending = false; Held = false;
-        Tick();
+        Reconcile();
     }
     private void FailSocket() { Dispose(); stalled(); }
     public void Dispose() { Wanted = Held = claimPending = releasePending = false; disposed = true; }

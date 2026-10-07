@@ -137,6 +137,26 @@ lease.ReleaseResult(); lease.Activate(true); lease.ClaimResult(true);
 Require(lease.CanSend && claims == 2, "Fresh acknowledged control claim did not resume");
 lease.Activate(false); clock = 2; lease.Tick();
 Require(stalls == 1 && !lease.CanSend, "Timed-out release retained authority locally");
+foreach(var blur in new[]{false,true})
+{
+    var eventTime=0d;var eventClaims=0;var eventReleases=0;var eventStalls=0;
+    var queued=new ControlLease(()=>eventClaims++,()=>eventReleases++,()=>eventStalls++,_=>{},()=>eventTime);
+    queued.Activate(true);queued.ClaimResult(true);queued.Activate(false);
+    eventTime=.8;queued.Activate(!blur);
+    Require(eventStalls==0&&!queued.CanSend&&eventClaims==1&&eventReleases==1,"Input/focus phase expired an acknowledgement before the SDK could drain it");
+    queued.ReleaseResult();queued.Tick();
+    if(blur){Require(!queued.CanSend&&eventClaims==1,"Blur revived a canceled grant");queued.Activate(true);}
+    Require(eventClaims==2&&!queued.CanSend,"Queued release bypassed the fresh claim ACK");
+    queued.ClaimResult(true);Require(queued.CanSend,"Post-drain fresh acknowledged claim failed");
+    queued.Activate(false);eventTime+=.501;queued.Tick();
+    Require(eventStalls==1&&!queued.CanSend,"Post-drain release timeout was weakened");
+}
+var claimTime=0d;var claimStalls=0;
+var noClaimAck=new ControlLease(()=>{},()=>{},()=>claimStalls++,_=>{},()=>claimTime);
+noClaimAck.Activate(true);claimTime=1.501;noClaimAck.Tick();
+Require(claimStalls==1&&!noClaimAck.CanSend,"Post-drain missing-claim deadline was weakened");
+Console.WriteLine("Queued release ACKs survive input/blur ordering, canceled grants stay canceled, and post-SDK-pump0.5s/1.5s retirement deadlines remain enforced.");
+
 var offered = new List<(ulong Sequence, MovementIntent Intent)>(); clock = 0;
 var transmitter = new IntentTransmitter((serial, intent) => offered.Add((serial, intent)), _ => { }, () => stalls++, () => clock);
 Require(transmitter.Offer(MovementIntent.Zero, piloting: true), "First braking demand was omitted");
@@ -409,6 +429,9 @@ using (var goldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext
     Console.WriteLine("Source stellar event phases and perspective/frustum dust strata match independent pinned renderer outputs.");
 }
 
+OwnedMotionTests.Run(Path.Combine(AppContext.BaseDirectory, "owned-motion-golden.json"));
+OwnedMotionTests.RunYaw(Path.Combine(AppContext.BaseDirectory, "owned-yaw-golden.json"));
+
 var worldCatalog = new ReplicatedWorldCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "world-manifest.json")));
 var combatFx = new CombatEffectCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "combat-manifest.json")));
 using (var combatGoldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"combat-golden.json"))))
@@ -514,6 +537,31 @@ foreach(var slot in new[] { "primary", "secondary", "trim", "dark", "metal", "gl
         SourceLightUnitsRules.ShipDirect(false,role,slot)==(legacyInterior?.9:.6),"Authored material/legacy clone direct-light class differs: "+role+"/"+slot);
 }
 Console.WriteLine("Source light irradiance, manual-color transform, authored/legacy material classes and finite native range checks passed.");
+var skyLutBytes=File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,"source-sky-lut-golden.json"));
+Require(Convert.ToHexString(SHA256.HashData(skyLutBytes)).ToLowerInvariant()=="de66c1a02fdbfc34ba942d7c85d9025bd20fa3cfc767e6489c5ed063e4bde2ea","Independent source sky lookup fixture pin changed");
+using(var skyLookup=JsonDocument.Parse(skyLutBytes))
+{
+    foreach(var pair in new[]{("vulkan",SourceDisplaySpaceProfile.Vulkan),("gl-material",SourceDisplaySpaceProfile.CompatibilityMaterial),("gl-post",SourceDisplaySpaceProfile.CompatibilityPost)})
+    {
+        var expected=skyLookup.RootElement.GetProperty(pair.Item1);var actual=SourceDisplaySpaceRules.Lookup(pair.Item2);
+        Require(expected.GetArrayLength()==256,"Source sky fixture omitted output codes");
+        for(var code=0;code<actual.Length;code++)Require(BitConverter.SingleToInt32Bits(actual[code])==BitConverter.SingleToInt32Bits((float)expected[code].GetDouble()),"Native sky R32F input differs at "+pair.Item1+"/"+code);
+    }
+}
+var skyContext=new SourceDisplaySpaceContext("gl_compatibility","opengl3",true,true,.97,1,1,false);
+Require(SourceDisplaySpaceRules.Evaluate(skyContext).Profile==SourceDisplaySpaceProfile.CompatibilityMaterial&&
+    SourceDisplaySpaceRules.Evaluate(skyContext with{Glow=true}).Profile==SourceDisplaySpaceProfile.CompatibilityPost&&
+    SourceDisplaySpaceRules.Evaluate(skyContext with{RenderScale=.75}).Profile==SourceDisplaySpaceProfile.CompatibilityPost&&
+    SourceDisplaySpaceRules.Evaluate(skyContext with{Renderer="forward_plus",Driver="vulkan",Glow=true,RenderScale=.75}).Profile==SourceDisplaySpaceProfile.Vulkan,"Native sky engine profile selection differs");
+foreach(var unsupported in new[]{skyContext with{EnginePinned=false},skyContext with{Filmic=false},skyContext with{Exposure=1},skyContext with{White=2},
+    skyContext with{RenderScale=double.NaN},skyContext with{RenderScale=.49},skyContext with{Ssao=true},skyContext with{NativeAdjustments=true},
+    skyContext with{CanvasBackground=true},skyContext with{Hdr2D=true},skyContext with{CameraEffects=true},skyContext with{Fog=true},
+    skyContext with{TransparentBackground=true},skyContext with{SupportedScaler=false},skyContext with{Driver="unsupported"}})
+    Require(!SourceDisplaySpaceRules.Evaluate(unsupported).Qualified,"Unsupported sky pipeline silently claimed source output equivalence");
+Reject(()=>SourceDisplaySpaceRules.NativeInput(-1,SourceDisplaySpaceProfile.Vulkan),"Invalid sky output code accepted");
+Reject(()=>SourceDisplaySpaceRules.NativeInput(256,SourceDisplaySpaceProfile.Vulkan),"Out-of-range sky output code accepted");
+Reject(()=>SourceDisplaySpaceRules.Lookup(SourceDisplaySpaceProfile.Unqualified),"Unqualified output generated a sky LUT");
+Console.WriteLine("All768 sky R32F lookup entries match independent source/native expectations; active engine profile and unsupported-output guards pass.");
 var cameraGoldenBytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "camera-golden.json"));
 Require(Convert.ToHexString(SHA256.HashData(cameraGoldenBytes)).ToLowerInvariant() == worldCatalog.Root.GetProperty("cameraGolden").GetProperty("sha256").GetString(),
     "Camera comparison fixture changed without updating its immutable pin");

@@ -1,7 +1,7 @@
 # Sidereal Godot
 
 Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
-The 0.4.1 evaluation implements Dastari browser sign-in, persistent character entry, replicated
+The 0.4.2 evaluation implements Dastari browser sign-in, persistent character entry, replicated
 decks, walking, piloting, cruise, contextual interaction, combat input and EVA controls.
 The responsive blue-glass UI includes Tetris inventory, equipment, tooltips, ground pickup,
 scoped storage, draggable/resizable windows and saved theme, display and graphics preferences.
@@ -16,8 +16,11 @@ reviewed planet/moon appearances, a procedural star, source starfield and dust, 
 engine exhaust. Accepted combat actions drive the browser's pinned muzzle, tracer and impact
 effects; weapon cards and reload eligibility share exact pinned content definitions. Health has
 an independent theme color, and tooltips scale and fit the viewport. Source lighting units and
-material receiver/shadow classes are implemented. This is an ongoing parity build: sky color
-space, family lighting/tone, some effect and editing interfaces, unsupported custom construction,
+material receiver/shadow classes are implemented. Source sky colors match both tested renderers,
+and ship/crew/camera motion shares the browser's smooth presentation timeline. Square equipment
+wells surround a larger rotatable preview; default paired windows fit the viewport while saved
+layouts remain intact. This is an ongoing parity build: stars/dust blending, family lighting/tone,
+some effect and editing interfaces, unsupported custom construction,
 asset streaming and Windows/GPU acceptance remain
 open. The [parity contract](https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity)
 records source pins, verified behavior and remaining work.

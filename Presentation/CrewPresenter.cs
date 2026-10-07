@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json;
+using Sidereal.Native.Input;
 namespace Sidereal.Native;
 
 /// <summary>Accepted server crew rows only. All world coordinates subtract the render origin as doubles.</summary>
@@ -14,6 +15,11 @@ public partial class CrewPresenter:Node3D
     }
     private readonly Dictionary<string,Entry> entries=new();
     private Node3D? shipRoot;private double originX,originY,elevation;private bool interior;private uint layers=1;private ulong epoch;
+    private OwnedMotionFrame? ownedDisplay;
+    private string ownedActor = "";
+    private double ownedYaw;
+    private ulong ownedGeneration;
+    public double OwnYaw=>ownedYaw;
     public bool ReducedMotion {get;set;}
     public bool HasReady(string characterId)=>entries.TryGetValue(characterId,out var entry)&&entry.Model.Ready&&entry.Model.Visible;
     public CombatBodyAnchor? CombatAnchor(string characterId)
@@ -26,8 +32,17 @@ public partial class CrewPresenter:Node3D
     public int PendingCount=>entries.Values.Sum(x=>x.Model.PendingCount);
     public int UnsupportedCount=>entries.Values.Sum(x=>x.Model.Unsupported.Length);
     public string[] MissingAssets=>entries.Values.SelectMany(x=>x.Model.Unsupported).Distinct().ToArray();
-    public void ConfigureFrame(Node3D presentedShipRoot,double renderOriginX,double renderOriginY,double standingElevation,uint renderLayers,bool interiorVisible)
-    {shipRoot=presentedShipRoot;originX=renderOriginX;originY=renderOriginY;elevation=standingElevation;layers=renderLayers;interior=interiorVisible;}
+    public void ConfigureFrame(Node3D presentedShipRoot,double renderOriginX,double renderOriginY,double standingElevation,uint renderLayers,bool interiorVisible,OwnedMotionFrame? display=null)
+    {
+        shipRoot=presentedShipRoot;originX=renderOriginX;originY=renderOriginY;elevation=standingElevation;layers=renderLayers;interior=interiorVisible;ownedDisplay=display;
+        if(display==null||display.ContextGeneration!=ownedGeneration)
+        {ownedActor="";ownedYaw=0;ownedGeneration=display?.ContextGeneration??0;}
+    }
+    public double OwnSeatLift(ClientCore core)
+    {
+        if(!(core.Resting||core.IsPiloting)||core.Character is not {} actor)return 0;
+        return Seat(core,core.Seat?.LocalX??actor.LocalX,core.Seat?.LocalY??actor.LocalY)?.Lift??0;
+    }
     public static CrewModel CreatePreview(ClientCore core,uint layers=1)
     {var model=new CrewModel{Name="ReleasedCrewPreview",RenderLayers=layers};model.SetAppearance(CrewAppearanceView.FromCore(core));return model;}
     public static CrewModel CreatePreview(string appearanceJson,InventorySnapshot inventory,uint layers=1)
@@ -45,6 +60,14 @@ public partial class CrewPresenter:Node3D
         if(epoch!=core.SharedWorldEpoch){Clear();epoch=core.SharedWorldEpoch;}
         var connection=core.Connection;var actor=core.Character;if(connection==null||actor==null||!core.SharedAdmissionReady||shipRoot==null){Clear();return;}
         var keep=new HashSet<string>();var deck=core.Location?.DeckId??core.PassengerInterior?.DeckId;var presented=core.CurrentPresentedShip;
+        if(ownedDisplay is {} facing)
+        {
+            if(ownedActor!=actor.Id){ownedActor=actor.Id;ownedYaw=0;}
+            var seated=core.Resting||core.IsPiloting;var sx=core.Seat?.LocalX??actor.LocalX;var sy=core.Seat?.LocalY??actor.LocalY;
+            double? seatFacing=seated?Seat(core,sx,sy)?.Facing??Math.Sign(sx)*Math.PI/2:null;
+            double? aim=core.Combat?.AimActive==true?core.Combat.AimAngle:null;
+            ownedYaw=OwnedMotionPresentation.BodyYaw(ownedYaw,facing.TravelHeading,aim,seatFacing);
+        }
         if(core.Eva is { } eva&&core.SpatialReady)
         {
             var cycling=connection.Db.OwnEvaAirlockCycle.Iter().Any(r=>r.CharacterId==actor.Id);
@@ -57,7 +80,7 @@ public partial class CrewPresenter:Node3D
             var action=connection.Db.VisibleCombatActions.Iter().FirstOrDefault(r=>r.CharacterId==actor.Id);
             var seated=core.Resting||core.IsPiloting;var x=core.Seat?.LocalX??actor.LocalX;var y=core.Seat?.LocalY??actor.LocalY;var contact=seated?Seat(core,x,y):null;
             var motion=new CrewMotionState(Sprinting:actor.Sprinting,Seated:seated,Dead:!core.Alive,Aiming:core.Combat?.AimActive==true,ShotSequence:core.Combat?.ShotSequence??0,ReloadSequence:action?.ReloadSequence??0);
-            Draw(actor.Id,CrewAppearanceView.FromCore(core),motion,elapsed,shipRoot,x,-y,(core.Seat?.StandingElevationM??core.Location.StandingElevationM)+(contact?.Lift??0),contact?.Facing??(seated?Math.Sign(x)*Math.PI/2:core.Combat?.AimActive==true?-core.Combat.AimAngle:double.NaN),true,keep,contact);
+            Draw(actor.Id,CrewAppearanceView.FromCore(core),motion,elapsed,shipRoot,x,-y,(core.Seat?.StandingElevationM??core.Location.StandingElevationM)+(contact?.Lift??0),contact?.Facing??(seated?Math.Sign(x)*Math.PI/2:core.Combat?.AimActive==true?-core.Combat.AimAngle:double.NaN),true,keep,contact,own:true);
         }
         if(interior&&deck!=null&&presented!=null)
         {
@@ -81,13 +104,19 @@ public partial class CrewPresenter:Node3D
         foreach(var id in entries.Keys.Where(id=>!keep.Contains(id)).ToArray()){entries[id].Model.Visible=false;entries[id].Model.QueueFree();entries.Remove(id);}
     }
     private Node3D NodeForWorld()=>this;
-    private void Draw(string id,CrewAppearanceView appearance,CrewMotionState motion,double elapsed,Node3D parent,double x,double z,double height,double yaw,bool walking,HashSet<string> keep,CrewSeatContact? contact=null,string? name=null,bool connected=true)
+    private void Draw(string id,CrewAppearanceView appearance,CrewMotionState motion,double elapsed,Node3D parent,double x,double z,double height,double yaw,bool walking,HashSet<string> keep,CrewSeatContact? contact=null,string? name=null,bool connected=true,bool own=false)
     {
         if(!double.IsFinite(x)||!double.IsFinite(z)||!double.IsFinite(height))return;keep.Add(id);
         if(!entries.TryGetValue(id,out var entry)){entry=new(){Model=new CrewModel{Name="Crew_"+id,RenderLayers=layers}};parent.AddChild(entry.Model);entries.Add(id,entry);}
         else if(entry.Model.GetParent()!=parent)entry.Model.Reparent(parent,false);
         var displayedX=x;var displayedZ=z;var displayedHeight=height;var speed=0d;var moving=false;
-        if(walking)
+        if(own&&ownedDisplay is {} display)
+        {
+            entry.Yaw=ownedYaw;
+            displayedX=display.BodyLocalPosition.X;displayedZ=display.BodyLocalPosition.Z;displayedHeight=display.BodyLocalPosition.Y;
+            moving=display.Walking;speed=motion.Sprinting?CrewAssets.Catalog.Semantics.GetProperty("sprintSpeed").GetDouble():CrewAssets.Catalog.Semantics.GetProperty("walkSpeed").GetDouble();
+        }
+        else if(walking)
         {
             entry.Replay.Push(elapsed,x,-z,height);var shown=entry.Replay.Read(elapsed,motion.Seated,motion.Dead,motion.Aiming,!double.IsNaN(yaw)?-yaw:0,!double.IsNaN(yaw)?yaw:Math.Sign(x)*Math.PI/2);
             displayedX=shown.X;displayedZ=-shown.Y;displayedHeight=shown.Height;entry.Yaw=shown.Yaw;speed=shown.Speed;moving=shown.Moving;

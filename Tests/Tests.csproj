@@ -18,6 +18,7 @@
     <Compile Include="../Presentation/ReplicatedWorldSurface.cs" Link="ReplicatedWorldSurface.cs" />
     <Compile Include="../Presentation/SpaceMath.cs" Link="SpaceMath.cs" />
     <Compile Include="../Presentation/SourceLightUnitsRules.cs" Link="SourceLightUnitsRules.cs" />
+    <Compile Include="../Presentation/SourceDisplaySpaceRules.cs" Link="SourceDisplaySpaceRules.cs" />
     <Compile Include="../Presentation/SpaceMotionHistory.cs" Link="SpaceMotionHistory.cs" />
     <Content Include="../Assets/World/manifest.json" Link="world-manifest.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Assets/World/surface-golden.json" Link="surface-golden.json" CopyToOutputDirectory="PreserveNewest" />
@@ -33,6 +34,9 @@
     <Content Include="../Assets/Crew/face/*.json" Link="face/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Assets/Crew/face/*.bin" Link="face/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="space-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/owned-motion-golden.json" Link="owned-motion-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/owned-yaw-golden.json" Link="owned-yaw-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/source-sky-lut-golden.json" Link="source-sky-lut-golden.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../InventoryUi/item-seed-v1.json" Link="item-seed-v1.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../Bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

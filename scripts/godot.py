@@ -1,4 +1,4 @@
-"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.1)."""
+"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.2)."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
