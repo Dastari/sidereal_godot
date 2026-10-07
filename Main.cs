@@ -134,6 +134,7 @@ public partial class Main : Node3D
         if (credential != null && authTask == null && DateTimeOffset.UtcNow >= refreshRetryAt && credential.ExpiresAt - DateTimeOffset.UtcNow < TimeSpan.FromSeconds(60))
         { refreshing = true; authTask = auth.Refresh(credential, authCancel.Token); }
         core.Tick();
+        ui.SetViewMode(core.InteriorView);
         if (uiSmoke && !smokeEntered && core.Connection != null) { smokeEntered = true; ui.RequestEnter("UI Smoke Crew"); }
         ui.Refresh(authTask != null, authTask != null ? (refreshing ? "Renewing game session…" : "Complete sign-in in your browser, then return here.") : authMessage ?? core.Status);
         var worldVisible = ui.WorldVisible || worldPreview;
