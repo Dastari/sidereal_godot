@@ -33,6 +33,7 @@ The default game endpoint is `https://sidereal.tail7a58a6.ts.net:8447`; authenti
 to the server. [Windows downloads](https://sidereal.tail7a58a6.ts.net:8446) include the runtime.
 
 AI changes and local editor work share Git branches. Save and commit editor changes before pulling.
+The source ZIP is an editor snapshot; clone Git to use the test and lifecycle scripts below.
 `powershell -ExecutionPolicy Bypass -File scripts/update-windows.ps1 -Build` pulls without resetting
 local work and builds the client. Reload changed scenes in Godot when prompted.
 Use `Ui/ThemeGallery.tscn` to edit/review shared components; the Interface window changes your local

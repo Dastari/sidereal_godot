@@ -201,7 +201,7 @@ def build():
 
 def source_bundle(downloads=DOWNLOADS):
     # An explicit allowlist prevents local credentials/cache from entering downloads.
-    names = ('project.godot', 'Main.tscn', 'Main.cs', 'Main.cs.uid', 'ClientCore.cs', 'ClientCore.Gameplay.cs',
+    names = ('README.md', 'project.godot', 'Main.tscn', 'Main.cs', 'Main.cs.uid', 'ClientCore.cs', 'ClientCore.Gameplay.cs',
              'NativeAuth.cs', 'NativePreferences.cs', 'InventoryModel.cs', 'InventoryCargoPlan.cs', 'PresentationDisplay.cs',
              'Sidereal.Godot.csproj', 'Sidereal.Godot.sln', 'global.json', 'client-settings.json',
              'export_presets.cfg')
@@ -239,6 +239,7 @@ def export(downloads=DOWNLOADS):
         execute([GODOT, '--headless', '--path', PROJECT, '--export-release', preset, out / binary])
         if not (out / binary).exists() or not any(out.rglob('Sidereal.Godot.dll')):
             raise RuntimeError(f'{preset} export did not produce the complete .NET game')
+        shutil.copyfile(PROJECT / 'Ui/Fonts/OFL.txt', out / 'Font-LICENSE.txt')
         package = downloads / f'Sidereal-{directory}-x64.zip'
         temporary = package.with_suffix('.partial')
         with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED) as bundle:
