@@ -1,7 +1,7 @@
 # Sidereal Godot
 
 Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
-The 0.4.3 evaluation implements Dastari browser sign-in, persistent character entry, replicated
+The 0.4.4 evaluation implements Dastari browser sign-in, persistent character entry, replicated
 decks, walking, piloting, cruise, contextual interaction, combat input and EVA controls.
 The responsive blue-glass UI includes Tetris inventory, equipment, tooltips, ground pickup,
 scoped storage, draggable/resizable windows and saved theme, display and graphics preferences.
@@ -22,7 +22,11 @@ wells surround a larger rotatable preview; default paired windows fit the viewpo
 layouts remain intact. Inventory supports click-to-hold, fractional grab anchors, rotation,
 dragging, double-click equip/stow and Shift transfer through one pointer controller. Cargo equip
 uses two server-confirmed stages; rejected or uncertain requests preserve accepted inventory.
-Mouse events retain their own positions under slow frames. Source-default clearcoat stays off.
+Mouse events retain their own positions under slow frames. Personal storage tabs wrap with the
+window, and named container headers show dimensions and payload limits. Click a tab to inspect
+storage; drop a held item on a tab or header to request transfer to that exact container. Transfers
+use server-selected placement and require matching acknowledgements and fresh accepted rows.
+Source-default clearcoat stays off.
 This is an ongoing parity build: stars/dust blending, family lighting/tone,
 some effect and editing interfaces, unsupported custom construction,
 asset streaming and Windows/GPU acceptance remain

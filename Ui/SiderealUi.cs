@@ -314,7 +314,7 @@ public partial class SiderealUi : Control
 
     private void BuildWindows()
     {
-        inventoryWindow = Window("inventory", "INVENTORY", new Vector2(26, 176), new Vector2(680, 485));
+        inventoryWindow = Window("inventory", "INVENTORY", new Vector2(26, 176), new Vector2(680, 620));
         inventory = new InventoryWorkspace(core, demo); inventoryWindow.Content.AddChild(inventory);
         inventory.ContainerOpenRequested+=id=>OpenContainer(id);
         equipmentWindow = Window("equipment", "CHARACTER & EQUIPMENT", new Vector2(727, 176), new Vector2(620, 680));

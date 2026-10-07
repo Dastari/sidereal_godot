@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Sidereal.Native;
+using Sidereal.Native.Input;
 using Sidereal.Ui;
 
 namespace Sidereal.InventoryUi;
@@ -191,8 +192,12 @@ internal partial class EquipmentSlot : Control, IInventoryInteractionSurface
         var rect=new Rect2(Vector2.Zero,Size);if(!rect.HasPoint(local))return null;
         if(slot=="back"&&source.Definition?.EquipSlot!="back")
         {
-            var pack=snapshot.Items.FirstOrDefault(i=>i.EquipmentSlot=="back");var bag=snapshot.Containers.FirstOrDefault(c=>c.ParentItemId==pack?.Id&&c.Kind=="grid");
-            return new(this,rect,InventoryTargetKind.Transfer,bag!=null&&snapshot.FirstPlacement(source.Id,bag.Id)!=null,bag==null?"Equip a backpack first.":"No room in this backpack.",bag?.Id??"",Priority:40);
+            var current=InventoryPresentation.Read(core,demo);
+            var pack=current.Items.FirstOrDefault(i=>i.EquipmentSlot=="back");var bag=current.Containers.FirstOrDefault(c=>c.ParentItemId==pack?.Id&&c.Kind=="grid");
+            var result=bag==null?new InventoryTransferEligibility(false,"Equip a backpack first.",""):
+                InventoryTransferTarget.Evaluate(current,source.Id,bag.Id);
+            return new(this,rect,InventoryTargetKind.Transfer,result.Ready,result.Ready?"":result.Reason,bag?.Id??"",Priority:40,
+                ActionLabel:"Transfer to backpack · Server checks placement and capacity");
         }
         var matches=source.Definition?.EquipSlot==slot;
         return new(this,rect,InventoryTargetKind.Equip,matches,matches?"":"This item does not fit this equipment slot.",Priority:40);

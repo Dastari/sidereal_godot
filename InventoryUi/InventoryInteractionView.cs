@@ -11,8 +11,12 @@ namespace Sidereal.InventoryUi;
 
 internal sealed record InventorySourceHit(Control Owner,InventoryItemView Item,Rect2 Rect,Action? Select=null);
 internal enum InventoryTargetKind { Cancel,Grid,Equip,Transfer,Quick,Hotbar,Blocked }
-internal sealed record InventoryTarget(Control Owner,Rect2 Rect,InventoryTargetKind Kind,bool Valid,string Reason="",string ContainerId="",int X=0,int Y=0,bool Rotated=false,byte Slot=0,Action<string>? Bind=null,int Priority=0)
-{ public bool Holds=>Kind is InventoryTargetKind.Grid or InventoryTargetKind.Equip; }
+internal enum InventoryTargetSurfaceRole { Default,ContainerHeader,ContainerTab }
+internal sealed record InventoryTarget(Control Owner,Rect2 Rect,InventoryTargetKind Kind,bool Valid,string Reason="",string ContainerId="",int X=0,int Y=0,bool Rotated=false,byte Slot=0,Action<string>? Bind=null,int Priority=0,InventoryTargetSurfaceRole SurfaceRole=InventoryTargetSurfaceRole.Default,string ActionLabel="")
+{
+    public bool Holds=>Kind is InventoryTargetKind.Grid or InventoryTargetKind.Equip;
+    public bool NamedDestination=>SurfaceRole is InventoryTargetSurfaceRole.ContainerHeader or InventoryTargetSurfaceRole.ContainerTab;
+}
 internal interface IInventoryInteractionSurface
 {
     ClientCore InventoryCore {get;}
@@ -151,7 +155,14 @@ public partial class InventoryInteractionView : Control
         if(source?.Item.Id==paintedItem.Id&&State.Gesture==InventoryGesture.Held)return new(source.Owner,source.Rect,InventoryTargetKind.Cancel,true,Priority:100);
         return targets.OrderByDescending(t=>t.Priority).FirstOrDefault();
     }
-    private InventoryTarget? CandidateAt(Vector2 pointer)=>OrdinaryControl(pointer)||WindowChrome(pointer)?null:TargetAt(pointer);
+    private InventoryTarget? CandidateAt(Vector2 pointer)
+    {
+        if(WindowChrome(pointer))return null;
+        var target=TargetAt(pointer);
+        // A registered invalid tab must also win over Button.Pressed, preventing
+        // a refused item drop from silently switching the original source pane.
+        return OrdinaryControl(pointer)&&target?.NamedDestination!=true?null:target;
+    }
     private string Context(InventoryItemView item)
     {
         var snapshot=Snapshot;var container=snapshot.Container(item.ContainerId);
@@ -300,8 +311,9 @@ public partial class InventoryInteractionView : Control
             if(State.Gesture==InventoryGesture.Held)
             {
                 if(WindowChrome(pointer)){CancelLocal();return;}
-                if(OrdinaryControl(pointer)){ordinaryPress=true;return;}
-                Drop(CandidateAt(pointer));State.ConsumeNextRelease();GetViewport().SetInputAsHandled();return;
+                var destination=CandidateAt(pointer);
+                if(OrdinaryControl(pointer)&&destination?.NamedDestination!=true){ordinaryPress=true;return;}
+                Drop(destination);State.ConsumeNextRelease();GetViewport().SetInputAsHandled();return;
             }
             if(hit?.Item.Definition==null||core.InventoryPending)return;
             paintedItem=hit.Item;if(State.Arm(Source(hit),N(pointer),false)){hit.Select?.Invoke();Frame(hit.Owner)?.BringToFront();hit.Owner.GrabFocus();core.ReleaseControls();GetViewport().SetInputAsHandled();}
@@ -322,7 +334,7 @@ public partial class InventoryInteractionView : Control
         return new{a.Generation,a.OperationId,a.StageOperationId,a.SessionGeneration,a.ActorId,kind=a.Kind.ToString(),phase=a.Phase.ToString(),stage=a.Stage.ToString(),
             a.CommittedAck,a.FreshAcceptedRows,a.AcceptedStages,a.IsPending,a.Source,a.Expected,a.Target,a.TransferTarget,a.AcceptedPlacement};
     }
-    public object SmokeFacts()=>new{gesture=State.Gesture.ToString(),capturing=Capturing,animating=Animating,item=State.Source?.ItemId,rotation=State.Rotated,grab=new{x=State.GrabFraction.X,y=State.GrabFraction.Y},reason=State.Reason,submission=State.Submission,attempt=AttemptFacts(),prediction=State.Paint(Now),candidate=candidate==null?null:new{kind=candidate.Kind.ToString(),candidate.Valid,candidate.Reason,candidate.ContainerId,candidate.X,candidate.Y,candidate.Rotated}};
+    public object SmokeFacts()=>new{gesture=State.Gesture.ToString(),capturing=Capturing,animating=Animating,item=State.Source?.ItemId,rotation=State.Rotated,grab=new{x=State.GrabFraction.X,y=State.GrabFraction.Y},reason=State.Reason,submission=State.Submission,attempt=AttemptFacts(),prediction=State.Paint(Now),candidate=candidate==null?null:new{kind=candidate.Kind.ToString(),candidate.Valid,candidate.Reason,candidate.ContainerId,candidate.X,candidate.Y,candidate.Rotated,surfaceRole=candidate.SurfaceRole.ToString(),candidate.ActionLabel},destinations=Surfaces(GetParent()).OfType<ContainerDestination>().Select(c=>c.SmokeGeometry()).ToArray()};
     public override void _Draw()
     {
         var p=SiderealPalette.Current;
@@ -335,7 +347,8 @@ public partial class InventoryInteractionView : Control
             DrawSetTransform(bounds.GetCenter(),turns*Mathf.Pi/2);var size=turns%2==1?new Vector2(bounds.Size.Y,bounds.Size.X):bounds.Size;
             DrawTextureRect(texture,InventoryIcons.Fit(texture,new Rect2(-size*.5f,size)),false,Colors.White with{A=paint.Alpha});DrawSetTransform(Vector2.Zero);
         }
-        var note=paint.Pending?"Waiting for server confirmation…":candidate?.Valid==true?"✓ Place item · R rotate":candidate?.Reason??State.Reason;
+        var note=paint.Pending?"Waiting for server confirmation…":candidate?.Valid==true?
+            candidate.ActionLabel.Length>0?candidate.ActionLabel:"✓ Place item · R rotate":candidate?.Reason??State.Reason;
         if(note.Length==0)note="R rotate · Right-click cancels";
         DrawString(GetThemeFont("font","Label"),new Vector2(Math.Clamp(box.Position.X,4,Math.Max(4,Size.X-260)),Math.Clamp(box.End.Y+16,18,Math.Max(18,Size.Y-8))),note,HorizontalAlignment.Left,260,11,paint.Pending?p.Warning:candidate?.Valid==false?p.Danger:p.Accent);
     }

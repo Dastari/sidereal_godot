@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Sidereal.Ui;
 using Sidereal.Native;
+using Sidereal.Native.Input;
 
 namespace Sidereal.InventoryUi;
 
@@ -125,8 +126,17 @@ public partial class InventoryGrid : Control, IInventoryInteractionSurface
     {
         if(!new Rect2(Vector2.Zero,Size).HasPoint(local))return null;
         if(Hit(local) is {} onto&&onto.Id!=item.Id&&snapshot.Containers.FirstOrDefault(c=>c.ParentItemId==onto.Id&&c.Kind=="grid") is {} child)
-            return new(this,ItemRect(onto),InventoryTargetKind.Transfer,snapshot.FirstPlacement(item.Id,child.Id)!=null,"No room in this storage.",child.Id,Priority:30);
-        if(ListMode)return new(this,new Rect2(Vector2.Zero,Size),InventoryTargetKind.Transfer,snapshot.FirstPlacement(item.Id,container.Id)!=null,"No room in this storage.",container.Id,Priority:20);
+        {
+            var result=InventoryTransferTarget.Evaluate(InventoryPresentation.Read(core,demo),item.Id,child.Id);
+            return new(this,ItemRect(onto),InventoryTargetKind.Transfer,result.Ready,result.Ready?"":result.Reason,child.Id,Priority:30,
+                ActionLabel:$"Transfer to {child.Name} · Server checks placement and capacity");
+        }
+        if(ListMode)
+        {
+            var result=InventoryTransferTarget.Evaluate(InventoryPresentation.Read(core,demo),item.Id,container.Id);
+            return new(this,new Rect2(Vector2.Zero,Size),InventoryTargetKind.Transfer,result.Ready,result.Ready?"":result.Reason,container.Id,Priority:20,
+                ActionLabel:$"Transfer to {container.Name} · Server checks placement and capacity");
+        }
         if(item.Definition==null)return new(this,new Rect2(Vector2.Zero,Size),InventoryTargetKind.Blocked,false,"The pinned footprint is unavailable.",Priority:20);
         var cell=LandingCell(local,item,rotated,fraction);var (w,h)=item.Definition.Footprint(rotated);
         var fits=snapshot.Fits(item.Id,container.Id,cell.X,cell.Y,rotated);

@@ -431,6 +431,7 @@ using (var goldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext
 
 InventoryAttemptTests.Run();
 InventoryInteractionTests.Run();
+InventoryTransferTargetTests.Run();
 OwnedMotionTests.Run(Path.Combine(AppContext.BaseDirectory, "owned-motion-golden.json"));
 OwnedMotionTests.RunYaw(Path.Combine(AppContext.BaseDirectory, "owned-yaw-golden.json"));
 
