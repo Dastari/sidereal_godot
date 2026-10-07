@@ -874,6 +874,7 @@ namespace Sidereal.Bindings
                 Reducer.MoveInventoryItem args => Reducers.InvokeMoveInventoryItem(eventContext, args),
                 Reducer.OperatorAssignPrefabShip args => Reducers.InvokeOperatorAssignPrefabShip(eventContext, args),
                 Reducer.OperatorImportContentSeed args => Reducers.InvokeOperatorImportContentSeed(eventContext, args),
+                Reducer.OperatorInstallFactionFleet args => Reducers.InvokeOperatorInstallFactionFleet(eventContext, args),
                 Reducer.OperatorReplacePrefabShip args => Reducers.InvokeOperatorReplacePrefabShip(eventContext, args),
                 Reducer.OperatorResyncItemDefinitions args => Reducers.InvokeOperatorResyncItemDefinitions(eventContext, args),
                 Reducer.OperatorSetDefinitionGrant args => Reducers.InvokeOperatorSetDefinitionGrant(eventContext, args),

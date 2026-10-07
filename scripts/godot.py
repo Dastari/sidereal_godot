@@ -1,4 +1,4 @@
-"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.3.0)."""
+"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.0)."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -192,17 +192,20 @@ def test(managed, smoke=False, module=None, module_sha256=None, operator_config=
 
 def build():
     execute([sys.executable, ROOT / 'scripts/godot_world_assets.py', '--verify'])
+    execute([sys.executable, ROOT / 'scripts/godot_space_assets.py', '--verify'])
+    execute([sys.executable, ROOT / 'scripts/godot_crew_assets.py', '--verify'])
     execute([DOTNET, 'restore', 'Sidereal.Godot.csproj', '--locked-mode'])
     execute([DOTNET, 'build', 'Sidereal.Godot.csproj', '--no-restore'])
     execute([GODOT, '--headless', '--path', PROJECT, '--editor', '--import'])
 
 
-def source_bundle():
+def source_bundle(downloads=DOWNLOADS):
     # An explicit allowlist prevents local credentials/cache from entering downloads.
-    names = ('project.godot', 'Main.tscn', 'Main.cs', 'Main.cs.uid', 'ClientCore.cs', 'NativeAuth.cs', 'InventoryModel.cs',
+    names = ('project.godot', 'Main.tscn', 'Main.cs', 'Main.cs.uid', 'ClientCore.cs', 'ClientCore.Gameplay.cs',
+             'NativeAuth.cs', 'NativePreferences.cs', 'InventoryModel.cs', 'InventoryCargoPlan.cs', 'PresentationDisplay.cs',
              'Sidereal.Godot.csproj', 'Sidereal.Godot.sln', 'global.json', 'client-settings.json',
              'export_presets.cfg')
-    target = DOWNLOADS / 'Sidereal-Godot-Source.zip'
+    target = downloads / 'Sidereal-Godot-Source.zip'
     temporary = target.with_suffix('.partial')
     with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in names:
@@ -210,7 +213,7 @@ def source_bundle():
         for path in sorted(PROJECT.glob('*.cs.uid')):
             if path.name not in names:
                 package.write(path, 'Sidereal/' + path.name)
-        for directory in ('Ui', 'InventoryUi', 'Presentation', 'Assets'):
+        for directory in ('Ui', 'InventoryUi', 'Presentation', 'Assets', 'Input'):
             for path in sorted((PROJECT / directory).rglob('*')):
                 if path.is_file():
                     package.write(path, 'Sidereal/' + str(path.relative_to(PROJECT)))
@@ -222,29 +225,33 @@ def source_bundle():
     temporary.replace(target)
 
 
-def export():
+def export(downloads=DOWNLOADS):
     build()
-    DOWNLOADS.mkdir(parents=True, exist_ok=True)
+    downloads.mkdir(parents=True, exist_ok=True)
+    (ROOT / 'output').mkdir(parents=True, exist_ok=True)
     (ROOT / 'output/.gdignore').touch()
     for preset, directory, binary in [('Windows Desktop', 'windows', 'Sidereal.exe'), ('Linux', 'linux', 'Sidereal.x86_64')]:
         out = ROOT / 'output/godot' / directory
+        # Never carry files from an older engine/runtime into the new package.
+        if out.exists():
+            shutil.rmtree(out)
         out.mkdir(parents=True, exist_ok=True)
         execute([GODOT, '--headless', '--path', PROJECT, '--export-release', preset, out / binary])
         if not (out / binary).exists() or not any(out.rglob('Sidereal.Godot.dll')):
             raise RuntimeError(f'{preset} export did not produce the complete .NET game')
-        package = DOWNLOADS / f'Sidereal-{directory}-x64.zip'
+        package = downloads / f'Sidereal-{directory}-x64.zip'
         temporary = package.with_suffix('.partial')
         with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED) as bundle:
             for path in sorted(out.rglob('*')):
                 if path.is_file():
                     bundle.write(path, 'Sidereal/' + str(path.relative_to(out)))
         temporary.replace(package)
-    source_bundle()
-    files = sorted(DOWNLOADS.glob('*.zip'))
-    (DOWNLOADS / 'SHA256SUMS.txt').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in files))
+    source_bundle(downloads)
+    files = [downloads / name for name in ('Sidereal-Godot-Source.zip', 'Sidereal-linux-x64.zip', 'Sidereal-windows-x64.zip')]
+    (downloads / 'SHA256SUMS.txt').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in files))
     manifest = [{'name': p.name, 'bytes': p.stat().st_size, 'sha256': digest(p)} for p in files]
-    (DOWNLOADS / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    shutil.copyfile(PROJECT / 'download.html', DOWNLOADS / 'index.html')
+    (downloads / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    shutil.copyfile(PROJECT / 'download.html', downloads / 'index.html')
     print(json.dumps(manifest, indent=2))
 
 
@@ -311,7 +318,7 @@ def up(managed):
         subprocess.run(['tailscale', 'serve', '--bg', f'--https={port}', target], check=True)
 
 
-def command(action, managed, module_artifact=None, module_sha256=None, operator_config=None):
+def command(action, managed, module_artifact=None, module_sha256=None, operator_config=None, export_directory=None):
     if action == 'setup':
         setup()
     elif action == 'generate':
@@ -321,7 +328,7 @@ def command(action, managed, module_artifact=None, module_sha256=None, operator_
     elif action == 'build':
         build()
     elif action == 'export':
-        export()
+        export(Path(export_directory).resolve() if export_directory else DOWNLOADS)
     elif action == 'run':
         execute([GODOT, '--path', PROJECT])
     elif action == 'serve':

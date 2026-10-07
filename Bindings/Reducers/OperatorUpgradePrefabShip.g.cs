@@ -13,12 +13,12 @@ namespace Sidereal.Bindings
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void OperatorUpgradePrefabShipHandler(ReducerEventContext ctx, string operationId, bool dryRun, string shipId, string expectedSourceBlueprintSha256, ulong expectedInstanceRevision, string targetPrefabId, string expectedTargetBlueprintSha256);
+        public delegate void OperatorUpgradePrefabShipHandler(ReducerEventContext ctx, string operationId, bool dryRun, string shipId, string expectedSourceBlueprintSha256, ulong expectedInstanceRevision, string targetPrefabId, string expectedTargetBlueprintSha256, string? fromDryRunOperationId);
         public event OperatorUpgradePrefabShipHandler? OnOperatorUpgradePrefabShip;
 
-        public void OperatorUpgradePrefabShip(string operationId, bool dryRun, string shipId, string expectedSourceBlueprintSha256, ulong expectedInstanceRevision, string targetPrefabId, string expectedTargetBlueprintSha256)
+        public void OperatorUpgradePrefabShip(string operationId, bool dryRun, string shipId, string expectedSourceBlueprintSha256, ulong expectedInstanceRevision, string targetPrefabId, string expectedTargetBlueprintSha256, string? fromDryRunOperationId)
         {
-            conn.InternalCallReducer(new Reducer.OperatorUpgradePrefabShip(operationId, dryRun, shipId, expectedSourceBlueprintSha256, expectedInstanceRevision, targetPrefabId, expectedTargetBlueprintSha256));
+            conn.InternalCallReducer(new Reducer.OperatorUpgradePrefabShip(operationId, dryRun, shipId, expectedSourceBlueprintSha256, expectedInstanceRevision, targetPrefabId, expectedTargetBlueprintSha256, fromDryRunOperationId));
         }
 
         public bool InvokeOperatorUpgradePrefabShip(ReducerEventContext ctx, Reducer.OperatorUpgradePrefabShip args)
@@ -43,7 +43,8 @@ namespace Sidereal.Bindings
                 args.ExpectedSourceBlueprintSha256,
                 args.ExpectedInstanceRevision,
                 args.TargetPrefabId,
-                args.ExpectedTargetBlueprintSha256
+                args.ExpectedTargetBlueprintSha256,
+                args.FromDryRunOperationId
             );
             return true;
         }
@@ -69,6 +70,8 @@ namespace Sidereal.Bindings
             public string TargetPrefabId;
             [DataMember(Name = "expected_target_blueprint_sha_256")]
             public string ExpectedTargetBlueprintSha256;
+            [DataMember(Name = "from_dry_run_operation_id")]
+            public string? FromDryRunOperationId;
 
             public OperatorUpgradePrefabShip(
                 string OperationId,
@@ -77,7 +80,8 @@ namespace Sidereal.Bindings
                 string ExpectedSourceBlueprintSha256,
                 ulong ExpectedInstanceRevision,
                 string TargetPrefabId,
-                string ExpectedTargetBlueprintSha256
+                string ExpectedTargetBlueprintSha256,
+                string? FromDryRunOperationId
             )
             {
                 this.OperationId = OperationId;
@@ -87,6 +91,7 @@ namespace Sidereal.Bindings
                 this.ExpectedInstanceRevision = ExpectedInstanceRevision;
                 this.TargetPrefabId = TargetPrefabId;
                 this.ExpectedTargetBlueprintSha256 = ExpectedTargetBlueprintSha256;
+                this.FromDryRunOperationId = FromDryRunOperationId;
             }
 
             public OperatorUpgradePrefabShip()

@@ -35,11 +35,12 @@ public static class UiKit
 
     public static Control Spacer() => new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
 
-    public static Control Tooltip(string title, string description)
+    public static Control Tooltip(string title, string description, string? rarity = null)
     {
         var column = new VBoxContainer();
         column.AddChild(Heading(title, 23)); column.AddChild(Paragraph(description));
         var panel = new PanelContainer { Theme = SiderealPalette.Current.CreateTheme(), ThemeTypeVariation = "TooltipPanel" };
+        if(rarity!=null){var p=SiderealPalette.Current;var colour=p.Rarity(rarity);panel.AddThemeStyleboxOverride("panel",new SciFiFrameStyle(new Color(p.Surface,p.Opacity),colour,colour,14,9,true));}
         panel.AddChild(column); return panel;
     }
 }

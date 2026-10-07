@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1")
-Surface = Color(0.03137, 0.08627, 0.16078, 1)
-Accent = Color(0.26275, 0.86275, 1, 1)
-Text = Color(0.92941, 0.96078, 1, 1)
-Muted = Color(0.71765, 0.79216, 0.86275, 1)
-Opacity = 0.96
+Surface = Color(0.01961, 0.09020, 0.21176, 1)
+Accent = Color(0.27843, 0.87451, 1, 1)
+Text = Color(0.93725, 0.96471, 1, 1)
+Muted = Color(0.65490, 0.77255, 0.90980, 1)
+Opacity = 0.94
 UiScale = 1.0

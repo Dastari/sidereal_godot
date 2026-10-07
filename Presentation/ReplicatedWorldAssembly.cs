@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using Sidereal.Native;
 
 /// <summary>Pinned game GLBs assembled with the browser's exact public presentation plan.</summary>
 public partial class ReplicatedWorldAssembly : Node3D
@@ -10,6 +11,7 @@ public partial class ReplicatedWorldAssembly : Node3D
     private const string Assets = "res://Assets/World/";
     private static readonly Dictionary<string, PackedScene> scenes = new();
     private static readonly Dictionary<string, Material> materials = new();
+    private static readonly Dictionary<string,(Vector3[] Vertices,int[] Indices)> pickChannels=new();
     private readonly List<(Node3D Node, string View, string OcclusionSide)> banks = new();
     private readonly List<(Aabb Bounds, string View, string OcclusionSide)> framingBounds = new();
     private readonly JsonElement ship;
@@ -18,22 +20,33 @@ public partial class ReplicatedWorldAssembly : Node3D
     private readonly Dictionary<string, int> placementCounts = new();
     private readonly HashSet<string> loaded = new();
     private readonly HashSet<string> missing = new();
+    private readonly bool exteriorOnly;
+    private readonly List<JsonElement> lightSockets = new();
+    private readonly List<OmniLight3D> lightPool = new();
+    private NativePreferencesSnapshot preferences = new();
+    private readonly List<(string Id, string Role, Transform3D Transform, Vector3[] Vertices, int[] Indices, Aabb Bounds, string View, string Side)> pickGeometry = new();
+    public readonly record struct Hit(string PlacementId, string Role, Vector3 LocalPoint, float Distance);
+    public int EffectiveLocalLights => lightPool.Count(l => l.Visible);
     private Aabb bounds;
     private bool hasBounds;
     private bool currentCutaway;
     private string foregroundSide = "";
     public Aabb Bounds => bounds;
+    public ReplicatedWorldCatalog.CameraFrame CameraFrame { get; private set; }
     public int LoadedAssetCount => loaded.Count;
     public int RenderedPlacementCount { get; private set; }
     public IReadOnlyCollection<string> MissingAssetIds => missing;
     public string PrefabId => ship.GetProperty("id").GetString()!;
+    public ulong PrefabRevision => ship.GetProperty("revision").GetUInt64();
+    public string Theme => ship.GetProperty("theme").GetString()!;
     public string VisualKind => ship.GetProperty("visualKind").GetString()!;
     public string DisplayName => ship.GetProperty("name").GetString()!;
 
     public ReplicatedWorldAssembly() { }
-    public ReplicatedWorldAssembly(JsonElement ship, string furnishingsJson, uint layers, bool cutaway)
+    public ReplicatedWorldAssembly(JsonElement ship, string furnishingsJson, uint layers, bool cutaway, bool exteriorOnly = false)
     {
-        this.ship = ship; this.layers = layers;
+        this.ship = ship; this.layers = layers; this.exteriorOnly = exteriorOnly;
+        CameraFrame=ReplicatedWorldCatalog.ReadCameraFrame(ship);
         furnishings = ReplicatedWorldCatalog.ReadFurnishings(furnishingsJson);
         ReplicatedWorldCatalog.ValidateFurnishings(ship, furnishings);
         Name = "AuthoredShipAssembly";
@@ -42,7 +55,10 @@ public partial class ReplicatedWorldAssembly : Node3D
 
     private void Build(bool cutaway)
     {
-        var placements = ship.GetProperty("placements").EnumerateArray().ToArray();
+        var mounts = ship.GetProperty("prefab").GetProperty("mounts").EnumerateArray()
+            .Where(m => m.GetProperty("attach").GetString() == "interior").SelectMany(m => new[] { "mount:" + m.GetProperty("id").GetString(), "mount-" + m.GetProperty("id").GetString() }).ToHashSet();
+        var placements = ship.GetProperty("placements").EnumerateArray().Where(p => !exteriorOnly ||
+            p.GetProperty("view").GetString() != "deck" && !mounts.Any(id => p.GetProperty("id").GetString()!.StartsWith(id,StringComparison.Ordinal))).ToArray();
         foreach (var group in placements.GroupBy(p => string.Join('|',
             p.GetProperty("file").GetString(), p.GetProperty("node").GetString(),
             p.GetProperty("role").GetString(), p.GetProperty("view").GetString(),
@@ -99,20 +115,7 @@ public partial class ReplicatedWorldAssembly : Node3D
                 GD.PushWarning($"Native ship asset unavailable: {file} ({error.GetType().Name}).");
             }
         }
-        // Native spatial lighting is bounded; all exact source sockets remain catalogued.
-        foreach (var light in ship.GetProperty("lights").EnumerateArray()
-            .GroupBy(light => light.TryGetProperty("view", out var view) ? view.GetString()! : "deck")
-            .SelectMany(group => group.OrderByDescending(light => light.GetProperty("energy").GetSingle()).Take(16)))
-        {
-            var practical = new OmniLight3D
-            {
-                Name = "PublishedRoomPractical", Position = Vector(light.GetProperty("at")),
-                LightColor = Colour(light.GetProperty("colour")), LightEnergy = light.GetProperty("energy").GetSingle(),
-                OmniRange = light.GetProperty("range").GetSingle(), ShadowEnabled = false,
-                Layers = layers, LightCullMask = layers,
-            };
-            AddChild(practical); banks.Add((practical, light.TryGetProperty("view", out var lightView) ? lightView.GetString()! : "deck", ""));
-        }
+        if (!exteriorOnly) lightSockets.AddRange(ship.GetProperty("lights").EnumerateArray());
         SetCutaway(cutaway);
     }
 
@@ -174,6 +177,11 @@ public partial class ReplicatedWorldAssembly : Node3D
                 var aabb = transform * mesh.GetAabb();
                 bounds = hasBounds ? bounds.Merge(aabb) : aabb; hasBounds = true;
                 RecordFramingBounds(aabb, entry);
+                if(!exteriorOnly)for (var surface=0;surface<mesh.Mesh.GetSurfaceCount();surface++) {
+                    var pin=$"{mesh.Mesh.GetInstanceId()}:{surface}";
+                    if(!pickChannels.TryGetValue(pin,out var channel)){var arrays=mesh.Mesh.SurfaceGetArrays(surface);var vertices=arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array();var indices=arrays[(int)Mesh.ArrayType.Index].VariantType==Variant.Type.Nil?Enumerable.Range(0,vertices.Length).ToArray():arrays[(int)Mesh.ArrayType.Index].AsInt32Array();channel=(vertices,indices);pickChannels[pin]=channel;}
+                    RecordPick(entries[index],transform,channel.Vertices,channel.Indices,aabb);
+                }
             }
             var batch = new MultiMeshInstance3D { Name = "PublishedMeshBatch", Multimesh = multimesh, Layers = layers };
             AddChild(batch); banks.Add((batch, entry.GetProperty("view").GetString()!, OcclusionSide(entry)));
@@ -224,6 +232,7 @@ public partial class ReplicatedWorldAssembly : Node3D
                         minimum = minimum.Min(point); maximum = maximum.Max(point);
                     }
                     RecordFramingBounds(new Aabb(minimum, maximum - minimum), placement);
+                    if(!exteriorOnly){var points=Enumerable.Range(0,clipped.Positions.Length/3).Select(i=>new Vector3(clipped.Positions[i*3],clipped.Positions[i*3+1],clipped.Positions[i*3+2])).ToArray();RecordPick(placement,Transform3D.Identity,points,clipped.Indices,new Aabb(minimum,maximum-minimum));}
                 }
                 var offset = positions.Count / 3;
                 positions.AddRange(clipped.Positions); outputNormals.AddRange(clipped.Normals);
@@ -282,19 +291,31 @@ public partial class ReplicatedWorldAssembly : Node3D
         if (materials.TryGetValue(key, out var found)) return found;
         var material = (BaseMaterial3D)original.Duplicate();
         material.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        string? sourceFamily = null;
+        var sourceName = original.ResourceName.Split('.')[0].ToLowerInvariant();
+        if (sourceName.StartsWith("slot") && sourceName.Contains('_')) sourceName = sourceName[(sourceName.IndexOf('_') + 1)..];
+        if (sourceName.StartsWith("slot:",StringComparison.Ordinal)) sourceName = sourceName[5..];
+        sourceName = sourceName.Split('@')[0];
         if (authored)
         {
-            // The browser's molded finish bounds emission to retain saturated cyan/amber.
-            // Godot imports embedded textures/PBR directly; this does not change source bytes.
-            if (material.EmissionEnabled) material.EmissionEnergyMultiplier = Math.Min(1.3f, material.EmissionEnergyMultiplier);
-            material.Metallic = Math.Min(material.Metallic, 0.7f);
-            material.Roughness = Math.Max(material.Roughness, 0.35f);
+            var palette = ship.GetProperty("palette");
+            if (palette.TryGetProperty(original.ResourceName,out var authoredPalette) && authoredPalette.TryGetProperty("family",out var family)) sourceFamily = family.GetString();
+            var asset = ReplicatedWorld.Catalog.Root.GetProperty("assets").EnumerateArray().FirstOrDefault(a => a.GetProperty("file").GetString() == entry.GetProperty("file").GetString());
+            if (asset.ValueKind != JsonValueKind.Undefined && asset.TryGetProperty("gameMaterials",out var definitions))
+            {
+                var definition = definitions.EnumerateArray().FirstOrDefault(m => m.GetProperty("name").GetString() == original.ResourceName);
+                if (definition.ValueKind != JsonValueKind.Undefined)
+                {
+                    sourceFamily ??= definition.GetProperty("family").GetString();
+                    if (material.EmissionEnabled) material.EmissionEnergyMultiplier = definition.GetProperty("emissionStrength").GetSingle();
+                }
+            }
             if (themed)
             {
                 var name = original.ResourceName;
-                var palette = ship.GetProperty("palette");
                 var slotName = palette.TryGetProperty(name, out var paletteEntry) && paletteEntry.TryGetProperty("sourceSlotName", out var sourceSlot) ?
                     sourceSlot.GetString()! : name.Split('@')[0];
+                sourceName = slotName;
                 var slots = ReplicatedWorld.Catalog.Root.GetProperty("themes").GetProperty(theme).GetProperty("slots");
                 if (slots.TryGetProperty(slotName, out var slot))
                 {
@@ -324,6 +345,7 @@ public partial class ReplicatedWorldAssembly : Node3D
                 };
             }
         }
+        SourceSurfaceFinish.Apply(material,sourceFamily == "plastic-deck" ? "plastic-dark" : sourceFamily ?? SourceSurfaceFinish.ShipFamily(sourceName));
         materials[key] = material; return material;
     }
 
@@ -332,6 +354,36 @@ public partial class ReplicatedWorldAssembly : Node3D
         currentCutaway = cutaway;
         foreach (var (node, view, _) in banks) node.Visible = view == "both" || view == (cutaway ? "deck" : "flight");
         RenderedPlacementCount = placementCounts.GetValueOrDefault("both") + placementCounts.GetValueOrDefault(cutaway ? "deck" : "flight");
+    }
+
+    public void ApplyPreferences(NativePreferencesSnapshot next)
+    {
+        preferences=next;
+        foreach(var (node,_,_) in banks) if(node is GeometryInstance3D geometry)
+            geometry.CastShadow=next.Shadows?GeometryInstance3D.ShadowCastingSetting.On:GeometryInstance3D.ShadowCastingSetting.Off;
+        if (!next.Lighting || next.LocalLightLimit=="0") foreach(var light in lightPool)light.Visible=false;
+    }
+    public void UpdateLocalLights(Vector3 cameraLocal)
+    {
+        var budget=preferences.Lighting?(preferences.LocalLightLimit=="all"?32:int.Parse(preferences.LocalLightLimit)):0;
+        // Compatibility supports eight practical lights per object. The pool still retains
+        // exact authored sockets, choosing nearby visible sockets deterministically.
+        if(RenderingServer.GetCurrentRenderingMethod()=="gl_compatibility")budget=Math.Min(budget,8);
+        var selected=lightSockets.Where(l=>{var view=l.TryGetProperty("view",out var v)?v.GetString():"deck";return view=="both"||view==(currentCutaway?"deck":"flight");})
+            .OrderBy(l=>Vector(l.GetProperty("at")).DistanceSquaredTo(cameraLocal)).ThenBy(l=>l.TryGetProperty("id",out var id)?id.GetString():"",StringComparer.Ordinal).Take(budget).ToArray();
+        while(lightPool.Count<selected.Length) {var light=new OmniLight3D{Name="PublishedPracticalPool",ShadowEnabled=false,Layers=layers,LightCullMask=layers};AddChild(light);lightPool.Add(light);}
+        for(var i=0;i<lightPool.Count;i++) {var light=lightPool[i];light.Visible=i<selected.Length;if(!light.Visible)continue;var socket=selected[i];light.Position=Vector(socket.GetProperty("at"));light.LightColor=Colour(socket.GetProperty("colour"));light.LightEnergy=socket.GetProperty("energy").GetSingle();light.OmniRange=socket.GetProperty("range").GetSingle();}
+    }
+    private void RecordPick(JsonElement entry,Transform3D transform,Vector3[] points,int[] indices,Aabb bounds) { if(!exteriorOnly)pickGeometry.Add((entry.GetProperty("id").GetString()!,entry.GetProperty("role").GetString()!,transform,points,indices,bounds,entry.GetProperty("view").GetString()!,OcclusionSide(entry))); }
+    public Hit? Pick(Vector3 localOrigin,Vector3 localDirection)
+    {
+        Hit? nearest=null;
+        foreach(var g in pickGeometry) {
+            if(g.View!="both"&&g.View!=(currentCutaway?"deck":"flight")||currentCutaway&&g.Side.Length!=0&&g.Side==foregroundSide||!g.Bounds.IntersectsSegment(localOrigin,localOrigin+localDirection*100000))continue;
+            var inverse=g.Transform.AffineInverse();var origin=inverse*localOrigin;var direction=inverse.Basis*localDirection;
+            for(var i=0;i+2<g.Indices.Length;i+=3) {var a=g.Vertices[g.Indices[i]];var b=g.Vertices[g.Indices[i+1]];var c=g.Vertices[g.Indices[i+2]];var e1=b-a;var e2=c-a;var p=direction.Cross(e2);var determinant=e1.Dot(p);if(Math.Abs(determinant)<1e-8)continue;var t=origin-a;var u=t.Dot(p)/determinant;if(u<0||u>1)continue;var q=t.Cross(e1);var v=direction.Dot(q)/determinant;if(v<0||u+v>1)continue;var distance=e2.Dot(q)/determinant;if(distance<0)continue;var point=g.Transform*(origin+direction*distance);var actual=point.DistanceTo(localOrigin);if(nearest==null||actual<nearest.Value.Distance)nearest=new Hit(g.Id,g.Role,point,actual);}
+        }
+        return nearest;
     }
 
     private static string OcclusionSide(JsonElement placement)

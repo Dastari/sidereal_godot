@@ -10,6 +10,23 @@ using System.Text.Json.Nodes;
 /// <summary>Public authored asset data only; never a replica of private world rows.</summary>
 public sealed class ReplicatedWorldCatalog
 {
+    public readonly record struct CameraFrame(double CenterX,double CenterY,double HalfExtent)
+    {
+        public double InitialDeckZoom => Math.Clamp(HalfExtent*1.5,3,12);
+        public double InitialFlightZoom => Math.Max(4,HalfExtent*1.5);
+    }
+    // Browser construction-instance.ts frames the active deck's canonical floor
+    // vertices, rather than furnishings, exhaust, or the exterior GLB bounds.
+    public static CameraFrame ReadCameraFrame(JsonElement ship,string? deckId=null)
+    {
+        var layout=ship.GetProperty("document").GetProperty("layout");
+        deckId??=layout.GetProperty("playableDeckId").GetString();
+        var points=layout.GetProperty("tiles").EnumerateArray().Where(t=>t.GetProperty("deckId").GetString()==deckId)
+            .SelectMany(t=>t.GetProperty("vertices").EnumerateArray()).Select(p=>(X:p[0].GetDouble()/32,Y:p[1].GetDouble()/32)).ToArray();
+        if(points.Length==0||points.Any(p=>!double.IsFinite(p.X+p.Y)))throw new InvalidOperationException("The matched construction has no finite deck camera frame.");
+        var minX=points.Min(p=>p.X);var maxX=points.Max(p=>p.X);var minY=points.Min(p=>p.Y);var maxY=points.Max(p=>p.Y);
+        return new((minX+maxX)/2,(minY+maxY)/2,Math.Max(maxX-minX,maxY-minY)/2);
+    }
     private readonly JsonDocument document;
     public JsonElement Root => document.RootElement;
     public ReplicatedWorldCatalog(string json)
@@ -21,6 +38,10 @@ public sealed class ReplicatedWorldCatalog
 
     public JsonElement Preview(string prefabId) => Root.GetProperty("ships").EnumerateArray()
         .First(ship => ship.GetProperty("id").GetString() == prefabId);
+
+    public JsonElement Exterior(string prefabId, ulong revision) => Root.GetProperty("ships").EnumerateArray()
+        .FirstOrDefault(ship => ship.GetProperty("id").GetString() == prefabId && ship.GetProperty("revision").GetUInt64() == revision) is var ship && ship.ValueKind != JsonValueKind.Undefined
+            ? ship : throw new InvalidOperationException("This published exterior revision is not bundled.");
 
     // No id-only match: a custom live ship with the same template id is different geometry.
     public JsonElement Match(string documentJson, string? deckId)

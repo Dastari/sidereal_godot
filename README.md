@@ -1,14 +1,22 @@
 # Sidereal Godot
 
 Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
-This evaluation client implements Dastari browser sign-in, persistent character entry, replicated
-deck display and server-validated walking/pilot input. Its shared UI includes configurable colors,
-transparency and scale, draggable/resizable windows, Tetris inventory with rotation, equipment slots,
-five item hotbar slots and tooltips. Login/crew selection renders the furnished Wayfarer in a 3D dock.
-Known stock ships use their published authored surfaces and furnishings, matched to the replicated
-construction. The clipped HUD adapts to window size and 75–150% UI scale; open Menu for other panels.
-The paper doll uses a silhouette pending the separately assigned replacement character/armor models.
-Full gameplay/rendering parity and asset streaming remain planned.
+The 0.4 evaluation implements Dastari browser sign-in, persistent character entry, replicated
+decks, walking, piloting, cruise, contextual interaction, combat input and EVA controls.
+The responsive blue-glass UI includes Tetris inventory, equipment, tooltips, ground pickup,
+scoped storage, draggable/resizable windows and saved theme, display and graphics preferences.
+Its eight action frames contain the browser's five item actions and three unavailable slots;
+two quick frames inspect items. The six-tab system menu exposes supported local settings and
+server-confirmed vessel, appearance and account actions.
+
+Login and crew selection render game assets in a 3D dock. Known stock ships match their exact
+replicated construction. The world and paper doll use the released study-v2 crew rig, armor,
+faces and animation clips. Shared-space presentation includes actor-disclosed ships, the
+reviewed planet/moon appearances, a procedural star, source starfield and dust, and accepted
+engine exhaust. This is an ongoing parity build: lighting calibration, some effect and editing
+interfaces, unsupported custom construction, asset streaming and Windows/GPU acceptance remain
+open. The [parity contract](https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity)
+records source pins, verified behavior and remaining work.
 
 Until the initial PR is merged, clone the implementation branch explicitly:
 
@@ -31,6 +39,10 @@ Use `Ui/ThemeGallery.tscn` to edit/review shared components; the Interface windo
 theme and layout. The editable default theme is `Ui/default_palette.tres`.
 
 The Windows agent can run focused tests with `dotnet run --project Tests/Tests.csproj`.
+Use WASD to walk relative to the camera, Shift to sprint, E to use nearby objects or a control seat,
+X for cruise or EVA suit hold, V for combat, mouse/left click to aim/fire, and R to reload.
+I opens inventory, C character, N navigation, Tab deck/flight view, Z loot labels,
+and Escape cancels or opens the menu. Right drag orbits and the wheel zooms outside UI panels.
 For a real Dastari/Tailscale integration test against the separate fixture:
 
 ```powershell
@@ -45,6 +57,7 @@ Physical Windows/GPU acceptance is still pending. Detailed steps and evidence re
 
 On Linux, `python3 scripts/dev.py godot-setup` installs private pinned tools;
 `python3 scripts/dev.py godot-export` builds Windows/Linux packages and a source bundle.
+Add `--export-directory output/review-downloads` to stage packages for validation before serving them.
 The existing backend is a separate project and is never installed or republished by these commands.
 
 Design, setup, auth, validation, limitations, and the asset-streaming proposal:

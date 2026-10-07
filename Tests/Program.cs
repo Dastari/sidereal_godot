@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Sidereal.Native;
+using Sidereal.Native.Input;
+using System.Security.Cryptography;
 
 static void Require(bool value, string message) { if (!value) throw new Exception(message); }
 static void Reject(Action operation, string message) { try { operation(); } catch { return; } throw new Exception(message); }
@@ -41,7 +43,369 @@ var pinned = new Sidereal.Bindings.PublishedItemDefinition("item:compact-pistol@
 Require(InventoryCatalog.Resolve("compact-pistol", 2, new[] { pinned })?.Width == 3, "Retired explicit instance pin failed to resolve");
 Console.WriteLine("Tetris bounds, collision, rotation, self-placement and exact definition revision checks passed.");
 
+var cargoSnapshot = inventoryDemo with
+{
+    Items = inventoryDemo.Items.Select(i => i with { ScopedRevision = 10 }).ToArray(),
+    Containers = inventoryDemo.Containers.Select(c => c with { ScopedRevision = 20 }).Concat(new[] {
+        new InventoryContainerView("reachable-crate", "", "grid", "Supply crate", 8, 4, 500, 0, 0, "", false, "admitted-placement", 30, true)
+    }).ToArray()
+};
+var cargoPlan = InventoryCargoPlan.Create(cargoSnapshot, "ui-demo-0", "reachable-crate", (2, 1, true));
+Require(cargoPlan.ExpectedItemRevision == 10 && cargoPlan.ExpectedSourceRevision == 20 &&
+    cargoPlan.ExpectedDestinationRevision == 30 && cargoPlan.ExpectedCharacterRevision == 42 &&
+    cargoPlan.Rotated && cargoPlan.X == 2 && cargoPlan.Y == 1, "Scoped transfer lost exact disclosure revisions or placement");
+Require(cargoSnapshot.UsesScopedCargo("ui-demo-0", "reachable-crate"), "Reachable storage used the carried-only transaction route");
+Reject(() => InventoryCargoPlan.Create(cargoSnapshot, "ui-demo-4", "reachable-crate"), "Equipped item was transferred without first stowing it");
+Reject(() => InventoryCargoPlan.Create(cargoSnapshot, "ui-demo-0", "undisclosed-crate"), "Undisclosed storage was admitted");
+Reject(() => InventoryCargoPlan.Create(cargoSnapshot, "ui-demo-0", "reachable-crate", (7, 3, false)), "Out-of-bounds scoped placement was proposed");
+var missingCargoRevision = cargoSnapshot with { Containers = cargoSnapshot.Containers.Select(c => c.Id == "reachable-crate" ? c with { ScopedRevision = null } : c).ToArray() };
+Reject(() => InventoryCargoPlan.Create(missingCargoRevision, "ui-demo-0", "reachable-crate"), "Missing disclosure revision was guessed");
+var cyclicCargo = cargoSnapshot with { Containers = cargoSnapshot.Containers.Select(c => c.Id == "reachable-crate" ? c with { ParentItemId = "ui-demo-0" } : c).ToArray() };
+Reject(() => InventoryCargoPlan.Create(cyclicCargo, "ui-demo-0", "reachable-crate"), "Self-contained inventory was proposed");
+Console.WriteLine("Scoped cargo proposals retain exact revisions; disclosure loss, unknown destinations, equipped transfers and self-containment are rejected.");
+
+var preferenceDirectory = Path.Combine(Path.GetTempPath(), "sidereal-preferences-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(preferenceDirectory);
+try
+{
+    var preferenceFile = Path.Combine(preferenceDirectory, "presentation.json");
+    var preferences = new NativePreferences();
+    Require(!preferences.Load(preferenceFile), "A missing profile was reported as loaded");
+    preferences.Set(new NativePreferencesSnapshot { Brightness = 1.3, Gamma = 1.8, PanelOpacity = .63, UiScale = 1.25, Shadows = false });
+    var reloaded = new NativePreferences();
+    Require(reloaded.Load(preferenceFile) && reloaded.Snapshot == preferences.Snapshot, "Display preferences did not round-trip exactly");
+    reloaded.ResetGraphics();
+    Require(reloaded.Snapshot.Brightness == 1 && reloaded.Snapshot.Gamma == 1 && reloaded.Snapshot.Shadows &&
+        reloaded.Snapshot.UiScale == 1.25 && reloaded.Snapshot.PanelOpacity == .63, "Graphics reset changed independent UI preferences");
+    File.WriteAllText(preferenceFile, "{corrupt");
+    Require(!reloaded.Load(preferenceFile) && reloaded.Snapshot == new NativePreferencesSnapshot(), "A corrupt profile retained stale prior settings");
+    var normalized = new NativePreferencesSnapshot { Brightness = double.NaN, Gamma = 900, Saturation = -1, UiScale = 6, MsaaSamples = 99, LocalLightLimit = "999" }.Normalized();
+    Require(normalized.Brightness == 1 && normalized.Gamma == 2 && normalized.Saturation == 0 && normalized.UiScale == 1.5 && normalized.MsaaSamples == 4 && normalized.LocalLightLimit == "all", "Invalid graphics preferences escaped normalization");
+    foreach (var color in new[] { new[] { 0d, 0d, 0d }, new[] { 1d, 1d, 1d }, new[] { .125, .5, .875 } })
+        Require(new NativePreferencesSnapshot().TransferDisplay(color[0], color[1], color[2]).Zip(color).All(pair => Math.Abs(pair.First - pair.Second) < 1e-12), "Neutral display correction was not identity");
+    var desaturated = (new NativePreferencesSnapshot { Saturation = 0 }).TransferDisplay(1, 0, 0);
+    Require(desaturated.All(channel => Math.Abs(channel - .2126) < 1e-12), "Display saturation does not match browser luminance transfer");
+    var gamma = (new NativePreferencesSnapshot { Gamma = 2 }).TransferDisplay(.25, .25, .25);
+    Require(gamma.All(channel => Math.Abs(channel - .5) < 1e-12), "Display gamma does not match browser transfer");
+    Console.WriteLine("Native display transfer, finite normalization, versioned persistence/corruption recovery and scoped resets passed.");
+}
+finally { Directory.Delete(preferenceDirectory, true); }
+
+var mappedWalk = GameplayRules.ScreenToDeck(1, 1, Math.PI / 2, 0);
+Require(Math.Abs(mappedWalk.Dx - Math.Sqrt(.5)) < 1e-12 && Math.Abs(mappedWalk.Dy - Math.Sqrt(.5)) < 1e-12, "Camera-relative diagonal walking changed direction or magnitude");
+var keys = new GameplayKeyState();
+keys.Press("W", true); keys.Clear(); keys.Press("D", true);
+Require(!keys.IsPressed("W") && keys.IsPressed("D") && !keys.Press("S", false), "A cleared held key resumed across a UI blocker");
+var cruise = new CruiseControl();
+Require(cruise.Toggle("accepted-seat", 12, 30) && Math.Abs(cruise.Demand(0, "accepted-seat", false) - .4) < 1e-12, "Cruise did not retain accepted forward demand");
+Require(cruise.Demand(-1, "accepted-seat", false) == -1 && !cruise.Active, "Manual reverse did not cancel cruise");
+cruise.Toggle("accepted-seat", 0, 30); cruise.Demand(0, "different-seat", false);
+Require(!cruise.Active && !cruise.Toggle(null, 0), "Cruise survived seat relationship loss");
+var clock = 0d; var claims = 0; var releases = 0; var stalls = 0;
+var lease = new ControlLease(() => claims++, () => releases++, () => stalls++, _ => { }, () => clock);
+lease.Activate(true);
+Require(claims == 1 && !lease.CanSend, "Movement began before claim acknowledgment");
+lease.Activate(false); lease.ClaimResult(true);
+Require(!lease.CanSend && releases == 1, "Late claim acknowledgment revived a released lease");
+lease.ReleaseResult(); lease.Activate(true); lease.ClaimResult(true);
+Require(lease.CanSend && claims == 2, "Fresh acknowledged control claim did not resume");
+lease.Activate(false); clock = 2; lease.Tick();
+Require(stalls == 1 && !lease.CanSend, "Timed-out release retained authority locally");
+var offered = new List<(ulong Sequence, MovementIntent Intent)>(); clock = 0;
+var transmitter = new IntentTransmitter((serial, intent) => offered.Add((serial, intent)), _ => { }, () => stalls++, () => clock);
+Require(transmitter.Offer(MovementIntent.Zero, piloting: true), "First braking demand was omitted");
+Require(!transmitter.Offer(MovementIntent.Zero, piloting: true), "Unchanged pilot input flooded the socket");
+clock = .101;
+Require(transmitter.Offer(MovementIntent.Zero, piloting: true), "Zero pilot braking heartbeat was omitted");
+for (var index = 0; index < 40; index++) { clock += .101; transmitter.Offer(MovementIntent.Zero, piloting: true); }
+Require(transmitter.PendingCount == 32 && stalls == 2, "Unacknowledged intent requests were not bounded");
+Require(offered.Select(pair => pair.Sequence).SequenceEqual(Enumerable.Range(1, 32).Select(i => (ulong)i)), "Movement sequence was duplicated or regressed");
+Console.WriteLine("Camera-relative movement, held-key clearing, cruise relationship loss, acknowledged leases and bounded pilot heartbeats passed.");
+
+var scopeHandles = new List<ControlledWorldScope>();
+var scopeFailures = 0;
+using (var scopes = new SharedWorldScopes((queries, applied, _) => {
+    var handle = new ControlledWorldScope(queries, applied); scopeHandles.Add(handle); return handle;
+}, () => { }, () => scopeFailures++))
+{
+    var scopeActor = "11111111-1111-4111-8111-111111111111";
+    var scopeShip = "22222222-2222-4222-8222-222222222222";
+    var scopeSystem = "ad7bf00a-caa0-50ee-b307-332afaac71a1";
+    var admission = new WorldScopeAdmission(scopeActor, scopeShip, scopeSystem, 1);
+    var accepted = new WorldScopeMotion(scopeShip, scopeSystem, -.01, -400.01, -1, -2, 1);
+    Require(scopes.Accept(admission, accepted, null) && scopeHandles.Count == 1 && !scopes.Ready, "Spatial coverage became ready before own-motion subscription applied");
+    scopeHandles[0].Apply();
+    Require(scopeHandles.Count == 2 && scopeHandles[1].Queries.Length == 9, "Spatial discovery did not create exactly nine cell queries");
+    Require(scopeHandles[1].Queries.All(q => q.Contains("system_id = '" + scopeSystem + "'") && q.Contains("cell_x = ") && q.Contains("cell_y = ")), "Cell subscription lost system or cell bounds");
+    scopeHandles[1].Apply(); Require(scopes.Ready, "Applied spatial coverage was not ready");
+    scopes.Accept(admission, accepted with { X = 400, Y = 800, CellX = 1, CellY = 2, Tick = 2 }, null);
+    Require(scopes.CellSets == 2 && scopeHandles.Count == 3, "Crossing a cell did not retain old applied coverage while replacement was pending");
+    scopes.Accept(admission, accepted with { X = 1200, Y = 1600, CellX = 3, CellY = 4, Tick = 3 }, null);
+    Require(scopes.CellSets == 2 && scopeHandles.Count == 3, "Rapid crossing allocated an unbounded third discovery scope");
+    scopeHandles[2].Apply();
+    Require(scopeHandles[1].Retiring && scopes.CellSets == 2, "Previous discovery scope retired before replacement ACK or did not remain bounded");
+    scopeHandles[1].Retired();
+    Require(scopes.CellSets == 2 && scopeHandles.Count == 4 && scopeHandles[3].Queries.Any(q => q.EndsWith("cell_y = 5")), "Latest queued observer target was not coalesced after retirement ACK");
+    scopeHandles[3].Apply(); scopeHandles[2].Retired();
+    Require(scopes.Ready && scopes.CellSets == 1, "Settled spatial scopes retained old discovery subscriptions");
+    var epoch = scopes.Epoch;
+    scopes.Accept(null, null, null);
+    Require(!scopes.Ready && scopes.Epoch > epoch && scopeHandles[0].Retiring && scopeHandles[3].Retiring, "Admission loss retained old discovery coverage");
+    scopeHandles[0].Retired(); scopeHandles[3].Retired();
+    Require(scopes.CellSets == 0 && scopeFailures == 0, "Spatial retirement did not dispose all discovery handles");
+    Reject(() => SharedWorldScopes.CellQueries("forged' OR true", 0, 0), "Unvalidated system identity reached a subscription query");
+}
+Console.WriteLine("Spatial scopes use nine bounded cells, negative floor coordinates, coalesced crossings, ACK retirement and admission-loss disposal.");
+
+var joinJournal = new MemorySharedJoinJournal();
+var joinRequests = new List<SharedJoinRequest>(); clock = 0;
+var joinActor = "11111111-1111-4111-8111-111111111111";
+var joinShip = "22222222-2222-4222-8222-222222222222";
+var joinContext = new SharedJoinContext(true, true, false, new string('a', 64), "isolated-smoke",
+    new[] { new SharedJoinActor(joinActor, joinShip, true) }, new[] { new SharedJoinShip(joinShip, 7) }, Array.Empty<WorldScopeAdmission>());
+var join = new SharedWorldJoin(joinJournal, request => joinRequests.Add(request), () => clock);
+Require(join.Join(joinContext) && join.Pending && joinRequests.Count == 1 && joinJournal.Values.Count == 1, "Shared entry was sent before its request was durably recorded");
+var firstJoin = joinRequests[0];
+Require(SharedWorldJoin.Decode(SharedWorldJoin.Encode(firstJoin)) == firstJoin && Guid.TryParseExact(firstJoin.OperationId, "D", out _), "Shared entry revisions/operation did not round-trip");
+clock = 11; join.Observe(joinContext);
+Require(!join.Pending && joinJournal.Values.Count == 1 && join.Phase == "error", "Uncertain entry confirmation erased its durable operation");
+var restartedJoin = new SharedWorldJoin(joinJournal, request => joinRequests.Add(request), () => clock);
+Require(restartedJoin.Join(joinContext) && joinRequests[1] == firstJoin, "Restart minted another join operation instead of replaying the exact request");
+clock = 22; restartedJoin.Observe(joinContext);
+var revisedJoinContext = joinContext with { Ships = new[] { new SharedJoinShip(joinShip, 8) } };
+Require(!restartedJoin.Join(revisedJoinContext) && restartedJoin.ReviewRequired && joinRequests.Count == 2, "Stale join revisions were silently rebased and sent");
+Require(restartedJoin.DiscardPending(revisedJoinContext) && restartedJoin.Join(revisedJoinContext) && joinRequests[2].OperationId != firstJoin.OperationId && joinRequests[2].ExpectedShipRevision == 8, "Reviewed join discard did not create a fresh explicit request");
+var admittedJoinContext = revisedJoinContext with { Admissions = new[] { new WorldScopeAdmission(joinActor, joinShip, "ad7bf00a-caa0-50ee-b307-332afaac71a1", 1) } };
+restartedJoin.Observe(admittedJoinContext);
+Require(!restartedJoin.Pending && restartedJoin.Phase == "admitted" && joinJournal.Values.Count == 0, "Accepted admission did not retire the join journal");
+Reject(() => SharedWorldJoin.AccountKey("isolated-smoke", "unverified"), "Unverified identity reached the join journal key");
+Require(SharedWorldJoin.Decide(joinContext with { ConstructionReview = true }).Kind == "blocked", "Legacy migration left a construction review implicitly");
+Console.WriteLine("Durable shared entry retains uncertain requests, exact UUID/revision replay, explicit stale-request review and accepted-admission cleanup.");
+
+foreach (var unauthorized in new[] { false, true })
+{
+    var failingJournal = new FailingSharedJoinJournal { Unauthorized = unauthorized, Saved = SharedWorldJoin.Encode(firstJoin) };
+    var unexpectedSends = 0;
+    var cleanupJoin = new SharedWorldJoin(failingJournal, _ => unexpectedSends++, () => clock);
+    cleanupJoin.Observe(admittedJoinContext);
+    Require(cleanupJoin.Phase == "admitted" && !cleanupJoin.Pending && cleanupJoin.JournalCleanupFailed && failingJournal.Saved != null,
+        "Journal cleanup failure escaped or replaced accepted admission");
+    for (var tick = 0; tick < 100; tick++) cleanupJoin.Observe(admittedJoinContext);
+    Require(failingJournal.RemoveCalls == 1 && unexpectedSends == 0, "Admitted frames repeatedly retried unavailable storage or sent another join");
+    Require(!cleanupJoin.Join(admittedJoinContext) && failingJournal.RemoveCalls == 2 && cleanupJoin.Phase == "admitted",
+        "Explicit admitted cleanup retry changed server admission");
+    Require(!cleanupJoin.DiscardPending(revisedJoinContext) && failingJournal.Saved == SharedWorldJoin.Encode(firstJoin) && cleanupJoin.ReviewRequired,
+        "Failed journal discard erased the original operation or permitted silent rebasing");
+    failingJournal.DenyRemoval = false;
+    Require(cleanupJoin.DiscardPending(revisedJoinContext) && !cleanupJoin.JournalCleanupFailed && failingJournal.Saved == null && unexpectedSends == 0,
+        "Explicit recovery did not clear the old journal without sending a new operation");
+}
+var callbackLedger = new GameplayCallbackLedger<object>();
+var oldCommandSocket = new object(); var freshCommandSocket = new object();
+Require(callbackLedger.TryAdd(oldCommandSocket, "operation-A", "ship-button", new[] { "ship", "button-A" }, 10) &&
+    callbackLedger.TryAdd(oldCommandSocket, "operation-B", "ship-button", new[] { "ship", "button-B" }, 10), "Distinct callback arguments collided");
+Require(callbackLedger.Complete(oldCommandSocket, "ship-button", new[] { "ship", "button-A" }) == "operation-A" && callbackLedger.PendingCount == 1,
+    "Button A acknowledged a different pending device");
+Require(!callbackLedger.TryAdd(oldCommandSocket, "duplicate-B", "ship-button", new[] { "ship", "button-B" }, 10), "Indistinguishable concurrent callback was accepted");
+Require(callbackLedger.Expire(11).Single() == oldCommandSocket && callbackLedger.IsRetired(oldCommandSocket) && callbackLedger.PendingCount == 0,
+    "An uncertain command did not retire all attempts on its socket");
+Require(!callbackLedger.TryAdd(oldCommandSocket, "retry-B", "ship-button", new[] { "ship", "button-B" }, 20) &&
+    callbackLedger.Complete(oldCommandSocket, "ship-button", new[] { "ship", "button-B" }) == null,
+    "Late equal-argument callback revived a timed-out socket");
+Require(callbackLedger.TryAdd(freshCommandSocket, "fresh-B", "ship-button", new[] { "ship", "button-B" }, 20) &&
+    callbackLedger.Complete(oldCommandSocket, "ship-button", new[] { "ship", "button-B" }) == null && callbackLedger.PendingCount == 1 &&
+    callbackLedger.Complete(freshCommandSocket, "ship-button", new[] { "ship", "button-B" }) == "fresh-B", "Retired callback settled a fresh socket request");
+foreach (var kind in new[] { "leave-pilot", "legacy-station", "rescue-beacon" })
+    Require(!callbackLedger.TryAdd(oldCommandSocket, "old-" + kind, kind, Array.Empty<string>(), 20), "No-argument command reused an uncertain socket");
+Console.WriteLine("Unavailable join journals preserve admission and exact requests without frame-loop IO; device callbacks correlate arguments and retire uncertain sockets.");
+
+var motionHistory = new SpaceMotionHistory();
+var oldYaw = 179 * Math.PI / 180; var newYaw = -179 * Math.PI / 180;
+motionHistory.Remember(new("accepted-system", 10, 0, 0, 2, 0, oldYaw, 0), 1000);
+motionHistory.Remember(new("accepted-system", 12, 10, 4, 2, 0, newYaw, 0), 1100);
+var halfway = motionHistory.At(1150)!.Value;
+Require(Math.Abs(halfway.Pose.X - 5) < 1e-12 && Math.Abs(halfway.Pose.Y - 2) < 1e-12 && Math.Abs(Math.Abs(halfway.Pose.Heading) - Math.PI) < 1e-12, "Remote motion interpolation changed accepted midpoint or long-way yaw");
+Require(motionHistory.At(1500)!.Value.Pose.X == 10 && motionHistory.At(2500)!.Value.Stale, "Remote presentation extrapolated beyond accepted motion or lost staleness");
+motionHistory.Remember(new("accepted-system", 11, 999, 999, 0, 0, 0, 0), 1600);
+Require(motionHistory.Count == 2 && motionHistory.At(1600)!.Value.Pose.X == 10, "Older shared motion rewound the accepted render history");
+motionHistory.Remember(new("replacement-system", 1, 20, 30, 0, 0, 0, 0), 1700);
+Require(motionHistory.Count == 1 && motionHistory.At(1700)!.Value.Pose.X == 20, "New system mixed old rendering samples");
+Console.WriteLine("Shared motion uses accepted midpoint/short yaw interpolation, old-tick rejection, epoch reset, staleness and no extrapolation.");
+
+var crewCatalog = new CrewCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "crew-catalog.json")), File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "crew-semantics.json")));
+var animationBytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "crew-anims.glb.bin"));
+var animationBank = new CrewAnimationBank(animationBytes);
+Require(animationBank.Count == 244 && animationBank.BoneNames.Length == 32 && crewCatalog.Scale == .9, "Released crew animation count, rig or single root scale changed");
+using (var crewGolden = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "crew-golden.json"))))
+{
+    Require(Convert.ToHexString(SHA256.HashData(animationBytes)).ToLowerInvariant() == crewGolden.RootElement.GetProperty("sourceAnimationSha256").GetString(), "Independent animation goldens came from different released bytes");
+    foreach (var fixture in crewGolden.RootElement.GetProperty("cases").EnumerateArray())
+    {
+        var clip = fixture.GetProperty("clip").GetString()!;
+        Require(animationBank.Has(clip) && Math.Abs(animationBank.Duration(clip) - fixture.GetProperty("duration").GetDouble()) < 2e-5, "Native crew lost a released clip/duration");
+        var poseSample = animationBank.Sample(clip, fixture.GetProperty("time").GetDouble(), fixture.GetProperty("loop").GetBoolean());
+        for (var i = 0; i < animationBank.BoneNames.Length; i++)
+        {
+            var expected = fixture.GetProperty("bones").GetProperty(animationBank.BoneNames[i]);
+            System.Numerics.Vector3 Vector(string field) { var v = expected.GetProperty(field); return new(v[0].GetSingle(), v[1].GetSingle(), v[2].GetSingle()); }
+            var q = expected.GetProperty("rotation"); var rotation = new System.Numerics.Quaternion(q[0].GetSingle(), q[1].GetSingle(), q[2].GetSingle(), q[3].GetSingle());
+            Require(System.Numerics.Vector3.Distance(poseSample[i].Position, Vector("position")) <= 2e-5 &&
+                System.Numerics.Vector3.Distance(poseSample[i].Scale, Vector("scale")) <= 2e-5 &&
+                1 - Math.Abs(System.Numerics.Quaternion.Dot(poseSample[i].Rotation, rotation)) <= 2e-5,
+                "Native crew animation differs from independent released glTF sample: " + clip + "/" + animationBank.BoneNames[i]);
+        }
+    }
+}
+foreach (var fixture in crewCatalog.Semantics.GetProperty("faceGoldens").EnumerateArray())
+{
+    var face = crewCatalog.Catalog.GetProperty("face").GetProperty(fixture.GetProperty("variant").GetString()!);
+    var colors = fixture.GetProperty("colors"); var state = fixture.GetProperty("state");
+    string Hex(string field) => "#" + string.Concat(colors.GetProperty(field).EnumerateArray().Select(channel => channel.GetByte().ToString("x2")));
+    var age = state.GetProperty("age").GetString(); var detail = state.GetProperty("detail").GetString();
+    var look = crewCatalog.Resolve(JsonSerializer.Serialize(new { bodyType = fixture.GetProperty("variant").GetString()!.StartsWith("f") ? "female" : "male",
+        skin = Hex("skin"), hair = Hex("hair"), eyes = Hex("eye"), expression = state.GetProperty("expression").GetString(),
+        faceAge = age == "lines" ? "mature" : age == "older" ? "elder" : "adult", faceDetail = detail == "scars" ? "scar" : detail }), new Dictionary<string, string>());
+    var atlas = new CrewFaceAtlas(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, face.GetProperty("json").GetString()!)),
+        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, face.GetProperty("png").GetString()! + ".bin")));
+    var pixels = atlas.Compose(look, state.GetProperty("expression").GetString(), state.TryGetProperty("blinkEyes", out var blink) ? blink.GetString() : null);
+    Require(Convert.ToHexString(SHA256.HashData(pixels)).ToLowerInvariant() == fixture.GetProperty("sha256").GetString(), "Native face tint/layers/blink differs from the source browser pixels");
+}
+Console.WriteLine("Released crew32-joint/244-clip bank matches11 independent samples; male/female face tint/marks/age/blink pixels match browser hashes.");
+
+void VerifyCrewPose(CrewBonePose[] actual, JsonElement expected, string context)
+{
+    for (var index = 0; index < animationBank.BoneNames.Length; index++)
+    {
+        var bone = expected.GetProperty(animationBank.BoneNames[index]);
+        System.Numerics.Vector3 V(string field) { var v = bone.GetProperty(field); return new(v[0].GetSingle(), v[1].GetSingle(), v[2].GetSingle()); }
+        var q = bone.GetProperty("rotation"); var rotation = new System.Numerics.Quaternion(q[0].GetSingle(), q[1].GetSingle(), q[2].GetSingle(), q[3].GetSingle());
+        Require(System.Numerics.Vector3.Distance(actual[index].Position, V("position")) <= 1e-4 &&
+            System.Numerics.Vector3.Distance(actual[index].Scale, V("scale")) <= 1e-4 &&
+            1 - Math.Abs(System.Numerics.Quaternion.Dot(actual[index].Rotation, rotation)) <= 1e-4,
+            "Source crew kinematics differ: " + context + "/" + animationBank.BoneNames[index]);
+    }
+}
+var planting = new CrewFootPlanting();
+var kinematics = crewCatalog.Semantics.GetProperty("kinematicsGoldens").EnumerateArray().ToArray();
+var stepIndex = 0;
+foreach (var input in crewCatalog.Semantics.GetProperty("footSteps").EnumerateArray())
+{
+    var clip = input.GetProperty("clip").GetString()!;
+    var poseSample = animationBank.Sample(clip, input.GetProperty("time").GetDouble(), true);
+    var p = input.GetProperty("position");
+    var matrix = System.Numerics.Matrix4x4.CreateScale(.9f) * System.Numerics.Matrix4x4.CreateRotationY(input.GetProperty("yaw").GetSingle()) *
+        System.Numerics.Matrix4x4.CreateTranslation(p[0].GetSingle(), p[1].GetSingle(), p[2].GetSingle());
+    planting.Step(animationBank, poseSample, matrix, input.GetProperty("dt").GetDouble(), input.GetProperty("plant").GetBoolean());
+    foreach (var golden in kinematics.Where(g => g.GetProperty("kind").GetString() == "feet" && g.GetProperty("step").GetInt32() == stepIndex))
+    {
+        VerifyCrewPose(poseSample, golden.GetProperty("bones"), "stance step" + stepIndex);
+        Require(Math.Abs(planting.Error - golden.GetProperty("error").GetDouble()) <= 1e-4, "Foot planting error differs from source at step" + stepIndex);
+    }
+    stepIndex++;
+}
+Console.WriteLine("Source stance planting matches124 sequential inputs and independently solved32-bone snapshots.");
+
+foreach (var fixture in kinematics.Where(g => g.GetProperty("kind").GetString() == "seat"))
+{
+    var poseSample = animationBank.Sample(fixture.GetProperty("clip").GetString()!, fixture.GetProperty("time").GetDouble(), true);
+    var contact = fixture.GetProperty("contact");
+    double? Optional(string key) => contact.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.Number ? value.GetDouble() : null;
+    CrewKinematics.Seat(animationBank, poseSample, .9, contact.GetProperty("lift").GetDouble(), contact.GetProperty("lean").GetDouble(),
+        contact.GetProperty("footSupport").GetDouble(), contact.GetProperty("forward").GetDouble(), Optional("footForward"));
+    VerifyCrewPose(poseSample, fixture.GetProperty("bones"), "canonical seat");
+}
+
+using (var environment = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "environment-manifest.json"))))
+using (var goldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "space-golden.json"))))
+{
+    Require(environment.RootElement.GetProperty("sourceRevision").GetString() == goldens.RootElement.GetProperty("sourceRevision").GetString(), "Browser/native space goldens came from another source revision");
+    var stars = SpaceMath.Stars(); var reference = environment.RootElement.GetProperty("stars");
+    Require(stars.Count == 8192 && reference.GetArrayLength() == stars.Count, "Distant star catalogue identity/count changed");
+    for (var i = 0; i < stars.Count; i++)
+    {
+        var expected = reference[i]; var actual = stars[i];
+        var direction = expected.GetProperty("direction"); var color = expected.GetProperty("color");
+        Require(new[] { actual.X - direction[0].GetDouble(), actual.Y - direction[1].GetDouble(), actual.Z - direction[2].GetDouble(),
+            actual.Red - color[0].GetDouble(), actual.Green - color[1].GetDouble(), actual.Blue - color[2].GetDouble(),
+            actual.AngularRadius - expected.GetProperty("angularRadius").GetDouble() }.All(error => Math.Abs(error) <= 1e-10), "Stable native distant star differs from the pinned browser catalogue");
+    }
+    double Number(JsonElement e, string property) => e.GetProperty(property).GetDouble();
+    void Near(double actual, double expected, string detail) => Require(double.IsFinite(actual) && Math.Abs(actual - expected) <= 1e-8, "Browser/native space rule differs: " + detail);
+    foreach (var fixture in goldens.RootElement.GetProperty("dustLayout").EnumerateArray())
+    {
+        var actual = SpaceMath.DustLayout(Number(fixture, "half"), Number(fixture, "aspect")); var expected = fixture.GetProperty("expected");
+        Require(actual.Columns == Number(expected, "columns") && actual.Rows == Number(expected, "rows") && actual.Count == Number(expected, "count") && actual.Spacing == Number(expected, "spacing"), "Dust grid/adaptive spacing differs from the browser");
+    }
+    foreach (var fixture in goldens.RootElement.GetProperty("dustCell").EnumerateArray())
+    {
+        var actual = SpaceMath.DustCell((int)Number(fixture, "index"), Number(fixture, "x"), Number(fixture, "y"), Number(fixture, "spacing")); var expected = fixture.GetProperty("expected");
+        Near(actual.X, Number(expected, "x"), "dust X/origin precision"); Near(actual.Y, Number(expected, "y"), "dust Y/origin precision");
+        Near(actual.Height, Number(expected, "height"), "dust depth"); Near(actual.Size, Number(expected, "size"), "dust size"); Near(actual.LengthVariation, Number(expected, "lengthVariation"), "dust variant");
+    }
+    foreach (var fixture in goldens.RootElement.GetProperty("dustMotion").EnumerateArray())
+    {
+        var actual = SpaceMath.DustMotion(Number(fixture, "vx"), Number(fixture, "vy"), fixture.GetProperty("reduced").GetBoolean()); var expected = fixture.GetProperty("expected");
+        Near(actual.Speed, Number(expected, "speed"), "dust speed"); Near(actual.Length, Number(expected, "length"), "dust exposure");
+        Near(actual.StreakRatio, Number(expected, "streakRatio"), "dust streak"); Near(actual.WarpBlend, Number(expected, "warpBlend"), "dust travel response");
+        Near(actual.Intensity, Number(expected, "intensity"), "dust intensity"); Near(actual.Heading, Number(expected, "heading"), "dust direction");
+    }
+    foreach (var fixture in goldens.RootElement.GetProperty("background").EnumerateArray())
+    {
+        var point = fixture.GetProperty("point"); var actual = SpaceMath.BackgroundWeights(fixture.GetProperty("region").GetRawText(), Number(point, "x"), Number(point, "y"), Number(point, "height"));
+        var expected = fixture.GetProperty("expected").EnumerateArray().ToDictionary(e => e.GetProperty("id").GetString()!, e => Number(e, "weight"));
+        Require(actual.Keys.Order().SequenceEqual(expected.Keys.Order()), "Scape ancestor clipping selected another vista");
+        foreach (var (id, weight) in expected) Near(actual[id], weight, "scape weight/ancestor clipping");
+    }
+    Console.WriteLine("All8192 pinned stars, browser dust at ±1e12 metre origins, reduced-motion response and nested scape weights passed.");
+    using var effectGoldens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "environment-golden.json")));
+    foreach (var fixture in effectGoldens.RootElement.GetProperty("eruptions").EnumerateArray())
+    {
+        var actual = SpaceMath.StellarEruption(Number(fixture, "time")); var expected = fixture.GetProperty("result");
+        Near(actual.Angle, Number(expected, "angle"), "source stellar event angle");
+        Near(actual.Progress, Number(expected, "progress"), "source stellar event progress");
+        Near(actual.Strength, Number(expected, "strength"), "source stellar event strength");
+    }
+    foreach (var fixture in effectGoldens.RootElement.GetProperty("depthLayers").EnumerateArray())
+    {
+        SpaceMath.Point3 Point(string key) { var p = fixture.GetProperty(key); return new(Number(p,"x"), Number(p,"y"), Number(p,"z")); }
+        var actual = SpaceMath.DustDepthLayers(Point("camera"), Point("target"), SpaceMath.FieldOfView, Number(fixture,"aspect"));
+        var expected = fixture.GetProperty("result"); Require(actual.Length == expected.GetArrayLength(), "Source dust depth strata count changed");
+        for (var index = 0; index < actual.Length; index++)
+        {
+            var a=actual[index]; var e=expected[index]; var center=e.GetProperty("center");
+            Near(a.Height,Number(e,"height"),"dust stratum height"); Near(a.CenterX,Number(center,"x"),"dust frustum X"); Near(a.CenterZ,Number(center,"z"),"dust frustum Z");
+            Near(a.DepthDistance,Number(e,"depthDistance"),"dust stratum distance"); Near(a.HalfX,Number(e,"halfX"),"dust frustum width"); Near(a.HalfZ,Number(e,"halfZ"),"dust frustum depth");
+            Near(a.Thickness,Number(e,"thickness"),"dust stratum thickness"); Near(a.SizeScale,Number(e,"sizeScale"),"dust depth size");
+        }
+    }
+    Require(SpaceMath.DustDepthLayers(new(0,1,0),new(0,2,0),.5,1).Length==0 &&
+        SpaceMath.DustDepthLayers(new(double.NaN,1,0),new(0,0,0),.5,1).Length==0,"Invalid or upward-facing camera produced dust layers");
+    Console.WriteLine("Source stellar event phases and perspective/frustum dust strata match independent pinned renderer outputs.");
+}
+
 var worldCatalog = new ReplicatedWorldCatalog(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "world-manifest.json")));
+var cameraGoldenBytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "camera-golden.json"));
+Require(Convert.ToHexString(SHA256.HashData(cameraGoldenBytes)).ToLowerInvariant() == worldCatalog.Root.GetProperty("cameraGolden").GetProperty("sha256").GetString(),
+    "Camera comparison fixture changed without updating its immutable pin");
+using (var cameraGoldens = JsonDocument.Parse(cameraGoldenBytes))
+{
+    Require(cameraGoldens.RootElement.GetProperty("sourceRevision").GetString() == worldCatalog.Root.GetProperty("sourceRevision").GetString(), "Camera fixtures use another browser source");
+    var fixtures=cameraGoldens.RootElement.GetProperty("fixtures");
+    Require(fixtures.GetArrayLength() == worldCatalog.Root.GetProperty("ships").GetArrayLength(), "Camera fixtures omitted a bundled current or historical ship");
+    foreach(var fixture in fixtures.EnumerateArray())
+    {
+        var ship=worldCatalog.Root.GetProperty("ships").EnumerateArray().Single(s=>s.GetProperty("prefabSha256").GetString()==fixture.GetProperty("prefabSha256").GetString());
+        var frame=ReplicatedWorldCatalog.ReadCameraFrame(ship,fixture.GetProperty("deckId").GetString());
+        void CameraNear(double actual,string key)=>Require(Math.Abs(actual-fixture.GetProperty(key).GetDouble())<1e-10,"Camera deck-frame/source zoom mismatch: "+fixture.GetProperty("prefabId").GetString()+"/"+key);
+        CameraNear(frame.CenterX,"centerX"); CameraNear(frame.CenterY,"centerY");CameraNear(frame.HalfExtent,"halfExtent");
+        CameraNear(frame.InitialDeckZoom,"initialDeckZoom");CameraNear(frame.InitialFlightZoom,"initialFlightZoom");
+    }
+    foreach(var fixture in cameraGoldens.RootElement.GetProperty("actorWeights").EnumerateArray())
+        Require(Math.Abs(SpaceMath.DeckActorWeight(fixture.GetProperty("half").GetDouble(),fixture.GetProperty("overview").GetDouble())-fixture.GetProperty("expected").GetDouble())<1e-10,"Camera actor-follow weight differs from source overview");
+    foreach(var fixture in cameraGoldens.RootElement.GetProperty("zoomEasing").EnumerateArray())
+        Require(Math.Abs(SpaceMath.Ease(fixture.GetProperty("current").GetDouble(),fixture.GetProperty("target").GetDouble(),fixture.GetProperty("dt").GetDouble())-fixture.GetProperty("expected").GetDouble())<1e-10,"Camera zoom easing differs from source");
+}
+Console.WriteLine("All20 canonical deck frames/default zooms and source-executed follow/zoom math match browser outputs.");
 foreach (var shipEntry in worldCatalog.Root.GetProperty("ships").EnumerateArray())
 {
     Require(ReplicatedWorldCatalog.CanonicalSha256(shipEntry.GetProperty("prefab")) == shipEntry.GetProperty("prefabSha256").GetString(), "Native canonical hashing disagrees with the exact public TypeScript prefab pin");
@@ -194,7 +558,8 @@ if (args[0] is "--auth-probe" or "--network-probe")
     Console.WriteLine("Real provider PKCE, signature/nonce validation, socket proof, token refresh and UUID-preserving replacement passed.");
     return;
 }
-Require(args.Length == 2, "Native smoke requires an explicit isolated endpoint and database");
+var gameplayProbe = args.Length == 3 && args[2] == "--gameplay-probe";
+Require(args.Length == 2 || gameplayProbe, "Native smoke requires an explicit isolated endpoint and database; optional --gameplay-probe uses the pinned browser source planner");
 var settings = new ClientSettings(args[0], args[1], "https://auth.dastari.net/realms/dastari", "sidereal-game", 43817);
 Require(settings.IsIsolatedFixture, "Native smoke requires the isolated local :3131 or Tailscale :8448 endpoint and a -smoke database");
 using var client = new ClientCore(settings);
@@ -203,6 +568,11 @@ void Wait(Func<bool> ready, string message)
 {
     var deadline = DateTime.UtcNow.AddSeconds(20);
     while (!ready() && DateTime.UtcNow < deadline) { foreach (var c in clients) c.Tick(); Thread.Sleep(10); }
+    if (!ready() && message.StartsWith("Accepted drop", StringComparison.Ordinal))
+        Console.WriteLine(JsonSerializer.Serialize(new { pending = client.InventoryPending, feedback = client.InventoryMessage,
+            itemCarried = client.Inventory.Items.Any(i => i.DefinitionId == "power-cell"), ground = client.Connection?.Db.OwnGroundItems.Iter().Select(row => new {
+                row.DefinitionId, row.Reachable, row.ElevationM, sameInstance = row.InstanceId == client.Location?.InstanceId, sameDeck = row.DeckId == client.Location?.DeckId }),
+            actorState = client.Vitals?.State, pilot = client.IsPiloting, resting = client.Resting }));
     Require(ready(), message);
 }
 client.Connect("", false);
@@ -221,6 +591,12 @@ Require(client.Vitals!.MaxHealth > 0 && client.Vitals.Health >= 0 && client.Vita
 Require(client.Power == null || client.Power.ShipId == client.Character.ShipId, "Power telemetry belongs to another ship");
 Require(client.Combat == null || client.Combat.CharacterId == uuid, "Weapon telemetry belongs to another actor");
 Console.WriteLine("Actor-filtered native health/power/weapon telemetry is scoped to the current actor and ship.");
+Wait(() => client.SpatialReady, "The acknowledged nine-cell shared observer scope did not become ready");
+Require(client.Connection!.Db.OwnWorldAdmission.Iter().Any(a => a.CharacterId == uuid && a.ShipId == client.Character.ShipId), "Starter boarding did not establish matching shared admission");
+Require(client.SpatialCellSets == 1 && client.Connection.Db.VisibleBodyDescriptions.Iter().Count(b => b.Kind is "planet" or "star") == 29,
+    "Shared observer did not receive the bounded canonical celestial chart");
+Require(!client.CanReturnFromReview && client.Instance != null, "Normal physical owned deck was mistaken for a temporary construction review");
+Console.WriteLine("New character boarding preserves the private owned deck and supplies acknowledged shared scope with all29 authoritative celestial identities.");
 var x = client.Character.LocalX;
 var y = client.Character.LocalY;
 // Walk in several directions: the canonical prefab spawn may face a wall in one.
@@ -234,6 +610,38 @@ foreach (var direction in new[] { (1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.
 Require(Math.Abs(client.Character.LocalX - x) + Math.Abs(client.Character.LocalY - y) > .1, "Server-confirmed walking did not advance");
 client.ReleaseControls();
 VerifyInventory(client, Wait);
+// Source-backed feature paths, all on the designated isolated fixture.
+var floorCandidate = client.Inventory.Items.First(i => i.ContainerId.Length > 0 && i.DefinitionId == "power-cell");
+var floorMass = client.Inventory.CarriedMassKg;
+Require(client.DropItem(floorCandidate.Id, client.Inventory.Revision), "Explicit floor drop did not dispatch");
+Wait(() => !client.InventoryPending && client.Inventory.Item(floorCandidate.Id) is { } dropped && client.Inventory.Container(dropped.ContainerId)?.Carried == false &&
+    client.Connection!.Db.OwnGroundItems.Iter().Any(row => row.Id == floorCandidate.Id && row.Reachable), "Accepted drop did not leave carried inventory and enter the scoped floor view");
+Require(client.TakeGroundItem(floorCandidate.Id), "Reachable floor pickup did not dispatch the supported transfer transaction");
+Wait(() => !client.InventoryPending && client.Inventory.Item(floorCandidate.Id) is { } picked && client.Inventory.Container(picked.ContainerId)?.Carried == true &&
+    !client.Connection!.Db.OwnGroundItems.Iter().Any(row => row.Id == floorCandidate.Id), "Accepted pickup did not reconcile carried/floor views");
+Require(Math.Abs(client.Inventory.CarriedMassKg - floorMass) < .0001, "Drop/pickup changed item mass or identity");
+Wait(() => client.Appearance != null, "Actor-filtered saved appearance did not arrive");
+var oldAppearance = client.Appearance!.AppearanceJson; var oldAppearanceRevision = client.Appearance.Revision;
+var appearanceProposal = JsonNode.Parse(oldAppearance)!.AsObject(); appearanceProposal["expression"] = "determined";
+Require(client.SaveAppearance(appearanceProposal.ToJsonString()), "Saved appearance proposal was not dispatched");
+Wait(() => !client.GameplayPending && client.Appearance?.Revision > oldAppearanceRevision, "Appearance change was not confirmed by its current revision");
+Require(JsonNode.Parse(client.Appearance!.AppearanceJson)!["expression"]!.GetValue<string>() == "determined", "Appearance UI was not backed by accepted server data");
+var changedAppearanceRevision = client.Appearance.Revision;
+Require(client.SaveAppearance(oldAppearance), "Restoring saved appearance did not dispatch");
+Wait(() => !client.GameplayPending && client.Appearance?.Revision > changedAppearanceRevision, "Saved appearance restoration did not settle");
+var firearm = client.Inventory.Items.First(i => i.DefinitionId == "compact-pistol");
+Require(client.EquipItem(firearm.Id, client.Inventory.Revision), "Combat hand equip did not dispatch");
+Wait(() => !client.InventoryPending && client.Combat?.WeaponItemId == firearm.Id, "Equipped weapon did not reach scoped combat state");
+if (!client.CombatEnabled) client.ToggleCombat();
+client.TickGameplay(.02, true, true); client.SetAimAngle(0); client.SetTrigger(true); client.SetTrigger(false);
+var beforeShot = client.Combat!.ShotSequence;
+var shotDeadline = DateTime.UtcNow.AddSeconds(10);
+while (client.Combat.ShotSequence == beforeShot && DateTime.UtcNow < shotDeadline)
+{ foreach (var c in clients) c.Tick(); client.TickGameplay(.02, true, true); Thread.Sleep(20); }
+Require(client.Combat.ShotSequence > beforeShot && Math.Abs(client.Combat.LastShotAngle) < .01, "Short click did not fire after acknowledged clockwise aim");
+client.CancelGameplayInput(); client.ToggleCombat();
+Console.WriteLine("Explicit drop/pickup preserves item UUID/mass; saved appearance uses real revisions; a short combat click fires after acknowledged aim.");
+if (gameplayProbe) GameplayNetworkProbe.Run(client, Wait);
 var afterRelease = DateTime.UtcNow.AddMilliseconds(300);
 while (DateTime.UtcNow < afterRelease) { client.Tick(); Thread.Sleep(10); }
 x = client.Character.LocalX; y = client.Character.LocalY;

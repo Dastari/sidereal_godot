@@ -39,6 +39,8 @@ internal static class InventoryIcons
         if (!textures.TryGetValue(path, out var texture)) textures[path] = texture = ResourceLoader.Exists(path) ? ResourceLoader.Load<Texture2D>(path) : null;
         return texture;
     }
+    public static string PresentationId(string id)
+    {Load();return demoAliases!.TryGetValue(id,out var alias)?alias:id;}
     public static Rect2 Fit(Texture2D texture, Rect2 bounds)
     {
         var size = texture.GetSize();

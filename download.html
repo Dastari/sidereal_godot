@@ -10,15 +10,16 @@
 <main>
 <header><h1>Sidereal, in Godot.</h1><p>A native client connected to the same authoritative world. Your server and database remain on Sidereal; this build runs locally on Windows.</p></header>
 <a class="download" href="Sidereal-windows-x64.zip">Download for Windows x64</a>
-<p class="state">Native evaluation 0.3.0. Includes Dastari sign-in, character entry, server-validated movement, Tetris inventory, equipment, five item hotbar slots and tooltips. Shared windows resize and move; colors, transparency and scale are configurable. Login and crew selection render the furnished Wayfarer in a 3D dock. Known stock ships render their exact replicated layout and furnishings using bundled game assets. The clipped HUD adapts to window size and 75–150% scale. Replacement character art, custom construction rendering, full shared-space presentation and asset streaming remain in development.</p>
+<p class="state">Native evaluation 0.4.0. Includes Dastari sign-in, character entry, walking, piloting, contextual interaction, combat and EVA input, Tetris inventory, equipment, scoped storage and tooltips. Shared windows resize and move; theme, display and graphics preferences are saved locally. Login and crew selection use a 3D dock. Released crew models, armor, faces and animations appear in the world and paper doll. Known stock ships render their replicated layout; shared space includes disclosed vessels, reviewed planet/moon appearances, starfield, dust and accepted engine exhaust. Lighting calibration, some effects and editing interfaces, custom construction, asset streaming and Windows/GPU acceptance remain open. See the <a href="https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity">parity record</a> for verified behavior and remaining work.</p>
 <h2>Run on Windows</h2>
 <ol>
 <li>Connect Tailscale using the account that has access to the Sidereal server.</li>
 <li>Download the ZIP, then use <strong>Extract all</strong>. Keep every extracted file and folder together.</li>
 <li>Open <strong>Sidereal.exe</strong>. The exported game includes its runtime; you do not need to install Godot or .NET.</li>
 <li>Select <strong>Sign in with Dastari</strong>, complete sign-in in your browser, then return to the game and select <strong>Resume character</strong> or <strong>Enter world</strong>.</li>
-<li>Use <strong>WASD</strong> to take control and move or pilot. Shift sprints, E uses a nearby pilot station and Escape releases control.</li>
-<li>Open <strong>Menu</strong>, then <strong>Inventory</strong> or <strong>Character</strong>. Drag items, press R while dragging to rotate, and use 1–5 for item hotbar actions. The <strong>Interface</strong> window controls theme and layout.</li>
+<li>Use <strong>WASD</strong> to walk or pilot, Shift to sprint, E to use nearby objects or a control seat, and X for cruise or EVA suit hold. V toggles combat; aim with the mouse, click to fire and R to reload.</li>
+<li>Use <strong>I</strong> for inventory, <strong>C</strong> for character, <strong>N</strong> for navigation and Tab for deck/flight view. Drag items and press R while dragging to rotate. Keys 1–5 invoke assigned item actions; 9/0 inspect quick items.</li>
+<li><strong>Escape</strong> cancels or opens the six-tab system menu. Display and Graphics save local preferences. Right drag and the wheel control the camera outside interface panels.</li>
 </ol>
 <p>Use the same Dastari account as the browser game to retain your character. Taking control transfers input between clients on that account. Windows execution and GPU performance still need verification on your machine.</p>
 <h2>Edit the project</h2>

@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Sidereal.Bindings;
+using Sidereal.Native.Input;
 using SpacetimeDB;
 using SpacetimeDB.ClientApi;
 
@@ -37,7 +38,7 @@ public readonly record struct RelativePose(double X, double Height, double Z)
     public static RelativePose World(double x, double y, double originX, double originY, double height = 0) => new(x - originX, height, -(y - originY));
 }
 
-public sealed class ClientCore : IDisposable
+public sealed partial class ClientCore : IDisposable
 {
     private sealed class SessionRejectedException : Exception { }
     private sealed class Session : IDisposable
@@ -47,11 +48,15 @@ public sealed class ClientCore : IDisposable
         public readonly CancellationTokenSource Cancellation = new();
         public Task? Proof;
         public bool Subscribing, Applied, Failed;
-        public ulong Sequence;
+        public ControlLease? Lease;
+        public IntentTransmitter? Transmitter;
+        public SharedWorldScopes? WorldScopes;
+        public ulong WorldScopeEpoch;
         public DateTimeOffset Deadline = DateTimeOffset.UtcNow.AddSeconds(20);
         public void Dispose()
         {
             Cancellation.Cancel();
+            Lease?.Dispose(); Transmitter?.Dispose(); WorldScopes?.Dispose();
             // Disconnect releases all server subscriptions atomically on this socket.
             Connection?.Disconnect();
             Subscription = null;
@@ -67,17 +72,17 @@ public sealed class ClientCore : IDisposable
     private bool replacementNeeded;
     public string Status { get; private set; } = "Sign in to connect your character.";
     public DbConnection? Connection => active?.Applied == true ? active.Connection : null;
-    public Character? Character => Connection?.Db.OwnCharacters.Iter().FirstOrDefault();
+    public Character? Character => ReadCharacter();
     public OwnedShip? Ship => Connection?.Db.OwnShips.Iter().FirstOrDefault(s => s.Id == Character?.ShipId);
-    public ConstructionLocationStatus? Location => Connection?.Db.OwnConstructionLocation.Iter().FirstOrDefault();
-    public ConstructionInstanceStatus? Instance => Connection?.Db.OwnConstructionInstances.Iter().FirstOrDefault(i => i.Id == Location?.InstanceId);
+    public ConstructionLocationStatus? Location => Connection?.Db.OwnConstructionLocation.Iter().FirstOrDefault(v => v.CharacterId == Character?.Id);
+    public ConstructionInstanceStatus? Instance => Connection?.Db.OwnConstructionInstances.Iter().FirstOrDefault(i => i.Id == (Location?.InstanceId ?? Eva?.ExitShipId));
     public AuthoredFlightStatus? Flight => Connection?.Db.OwnAuthoredFlights.Iter().FirstOrDefault(f => f.ShipId == Character?.ShipId);
-    public OwnConstructionSeatStatus? Seat => Connection?.Db.OwnConstructionSeat.Iter().FirstOrDefault();
+    public OwnConstructionSeatStatus? Seat => Connection?.Db.OwnConstructionSeat.Iter().FirstOrDefault(v => v.CharacterId == Character?.Id && v.InstanceId == Location?.InstanceId && v.DeckId == Location.DeckId);
     public Station? Station => Connection?.Db.OwnStations.Iter().FirstOrDefault(s => s.ShipId == Character?.ShipId);
     public CharacterVitalsStatus? Vitals => Connection?.Db.OwnCharacterVitals.Iter().FirstOrDefault(v => v.CharacterId == Character?.Id);
     public ShipPowerSummary? Power => Connection?.Db.OwnShipPower.Iter().FirstOrDefault(p => p.ShipId == Character?.ShipId);
     public CombatStatus? Combat => Connection?.Db.OwnCombat.Iter().FirstOrDefault(c => c.CharacterId == Character?.Id);
-    public bool IsPiloting => Character != null && Station?.OccupantId == Character.Id;
+    public bool IsPiloting => Character != null && (Station?.OccupantId == Character.Id || Flight?.SeatState is "seated" or "recovery-pending");
     public bool ControlsClaimed => controls;
     public string? DevelopmentToken { get; private set; }
     public event Action<string>? Error;
@@ -87,8 +92,25 @@ public sealed class ClientCore : IDisposable
     public string InventoryMessage { get; private set; } = "Drag an item to move it. R rotates while dragging.";
     private string? inventoryOperation;
     private DateTimeOffset inventoryDeadline;
+    private InventoryCargoPlan? inventoryCargo;
+    private (string ItemId, ulong ExpectedRevision, string ActorId)? inventoryPickup;
+    private bool inventoryReceiptConfirmed;
+    private sealed record EnterAttempt(Session Session, string Name, double Deadline);
+    private EnterAttempt? enterAttempt;
+    private bool enterReceiptConfirmed;
+    public string EnterPhase { get; private set; } = "idle";
+    public string EnterMessage { get; private set; } = "Choose a character name and enter.";
+    public bool EnterPending => enterAttempt != null;
+    public bool EnterFailed => EnterPhase is "failed" or "uncertain";
+    public ulong EnterEpoch { get; private set; }
 
-    public ClientCore(ClientSettings settings) => this.settings = settings;
+    public ClientCore(ClientSettings settings)
+    {
+        this.settings = settings;
+        sharedJoin = new(new FileSharedJoinJournal(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sidereal", "shared-join-v1")),
+            request => { if (Connection == null) throw new InvalidOperationException("Connection changed. Retry when connected.");
+                Connection.Reducers.JoinSharedSystem(request.CharacterId, request.ShipId, request.ExpectedShipRevision, request.ExpectedAdmissionRevision, request.OperationId); }, () => Now);
+    }
 
     public void Connect(string credential, bool provider = true)
     {
@@ -120,12 +142,18 @@ public sealed class ClientCore : IDisposable
                 session.Failed = true;
                 if (active == session) { controls = false; Status = "Connection lost. Reconnecting…"; }
             }).Build();
-        session.Connection.OnUnhandledReducerError += (_, _) =>
-            Report("The server rejected that action. Check your position and control access.");
-        session.Connection.Reducers.OnMoveInventoryItem += (ctx, _, _, _, _, _, _, operation) => InventoryResult(ctx, operation);
-        session.Connection.Reducers.OnEquipInventoryItem += (ctx, _, _, operation) => InventoryResult(ctx, operation);
-        session.Connection.Reducers.OnAssignInventoryHotbar += (ctx, _, _, _, operation) => InventoryResult(ctx, operation);
-        session.Connection.Reducers.OnActivateInventoryHotbar += (ctx, _, _, operation) => InventoryResult(ctx, operation);
+        session.Connection.OnUnhandledReducerError += (_, failure) => { if (active == session) Report("Rejected: " + SafeReason(failure.Message)); };
+        session.Connection.Reducers.OnEnterLab += (context, name) => {
+            if (active != session || !IsCaller(session, context) || enterAttempt is not { } attempt || attempt.Session != session || attempt.Name != name) return;
+            if (Accepted(context))
+            { enterReceiptConfirmed = true; EnterMessage = "Character accepted. Waiting for your subscribed character…"; ObserveEnter(); }
+            else CompleteEnter("failed", "Character entry refused: " + RejectedReason(context));
+        };
+        InitializeGameplaySession(session);
+        session.Connection.Reducers.OnMoveInventoryItem += (ctx, _, _, _, _, _, _, operation) => { if (active == session && IsCaller(session, ctx)) InventoryResult(ctx, operation); };
+        session.Connection.Reducers.OnEquipInventoryItem += (ctx, _, _, operation) => { if (active == session && IsCaller(session, ctx)) InventoryResult(ctx, operation); };
+        session.Connection.Reducers.OnAssignInventoryHotbar += (ctx, _, _, _, operation) => { if (active == session && IsCaller(session, ctx)) InventoryResult(ctx, operation); };
+        session.Connection.Reducers.OnActivateInventoryHotbar += (ctx, _, _, operation) => { if (active == session && IsCaller(session, ctx)) InventoryResult(ctx, operation); };
     }
 
     private async Task BindProof(DbConnection connection, string providerToken, CancellationToken cancellation)
@@ -175,54 +203,73 @@ public sealed class ClientCore : IDisposable
                 next.Subscription = next.Connection!.SubscriptionBuilder()
                     .OnApplied(_ => next.Applied = true)
                     .OnError((_, _) => { next.Failed = true; Report("World subscription failed. The client may need an update."); })
-                    .Subscribe(new[] {
-                        "SELECT * FROM own_characters", "SELECT * FROM own_ships", "SELECT * FROM own_stations",
-                        "SELECT * FROM own_construction_instances", "SELECT * FROM own_construction_location",
-                        "SELECT * FROM own_construction_seat", "SELECT * FROM own_authored_flights",
-                        "SELECT * FROM own_interactions", "SELECT * FROM own_inventory_state",
-                        "SELECT * FROM own_character_vitals", "SELECT * FROM own_ship_power", "SELECT * FROM own_combat",
-                        "SELECT * FROM own_inventory_items", "SELECT * FROM own_inventory_containers",
-                        "SELECT * FROM own_inventory_hotbar", "SELECT * FROM own_item_definition_pins",
-                        "SELECT * FROM published_item_definitions"
-                    });
+                    .Subscribe(GameplaySubscriptions);
             }
             if (pending == next && next.Applied && !next.Failed)
             {
-                var wantedControl = controls;
+                var wantedControl = active?.Lease?.Wanted == true;
                 ReleaseControls();
                 active = next;
                 pending = null;
                 replacementNeeded = false;
                 old?.Dispose();
                 if (InventoryPending) FinishInventory("Session changed. Check the current inventory before trying again.");
+                ResetGameplayContext();
                 Status = "Connected. Server authority active.";
                 if (wantedControl) ClaimControls();
             }
         }
         if (active?.Failed == true)
         {
-            active.Dispose(); active = null; controls = false;
+            active.Dispose(); active = null; controls = false; ResetGameplayContext();
             retryAt = DateTimeOffset.UtcNow.AddSeconds(3);
         }
         if ((active == null || replacementNeeded) && pending == null && token != null && DateTimeOffset.UtcNow >= retryAt) Open();
+        TryCompleteCargoReceipt();
         if (InventoryPending && (Connection == null || DateTimeOffset.UtcNow > inventoryDeadline))
             FinishInventory("Confirmation is delayed. Check the current inventory and reconnect before retrying.");
+        active?.Lease?.Tick(); controls = active?.Lease?.CanSend == true;
+        UpdateWorldScopes();
+        sharedJoin.Observe(ReadSharedJoinContext());
+        TickGameplayOperations();
+        ObserveEnter();
         inventorySnapshot = null;
     }
 
     private void Report(string message) { Status = message; Error?.Invoke(message); }
     private void FinishInventory(string message)
-    { InventoryPending = false; inventoryOperation = null; InventoryMessage = message; }
+    { InventoryPending = false; inventoryOperation = null; inventoryCargo = null; inventoryPickup = null; inventoryReceiptConfirmed = false; InventoryMessage = message; }
     private void InventoryResult(ReducerEventContext context, string operation)
     {
         if (operation != inventoryOperation) return;
         switch (context.Event.Status)
         {
-            case SpacetimeDB.Status.Committed: FinishInventory("Inventory confirmed by the server."); break;
+            case SpacetimeDB.Status.Committed:
+                if (inventoryCargo != null || inventoryPickup != null) { inventoryReceiptConfirmed = true; TryCompleteCargoReceipt(); }
+                else FinishInventory("Inventory confirmed by the server.");
+                break;
             case SpacetimeDB.Status.Failed(var reason):
                 FinishInventory("Rejected: " + reason.Replace('\n', ' ').Replace('\r', ' ')[..Math.Min(reason.Length, 240)] + " Review the updated inventory and try again."); break;
             default: FinishInventory("The server could not apply that change. Review the updated inventory and try again."); break;
         }
+    }
+    private void TryCompleteCargoReceipt()
+    {
+        if (!inventoryReceiptConfirmed || Connection == null) return;
+        if (inventoryPickup is { } pickup)
+        {
+            var received = InventoryCatalog.Read(Connection);
+            if (Character?.Id == pickup.ActorId && received.Revision > pickup.ExpectedRevision && received.Item(pickup.ItemId) is { } retrieved &&
+                (retrieved.EquipmentSlot.Length > 0 || received.Container(retrieved.ContainerId)?.Carried == true) && !Connection.Db.OwnGroundItems.Iter().Any(row => row.Id == pickup.ItemId))
+                FinishInventory("Item collected and confirmed by the server.");
+            return;
+        }
+        if (inventoryCargo is not { } plan) return;
+        var snapshot = InventoryCatalog.Read(Connection);
+        var item = snapshot.Item(plan.ItemId);
+        if (item != null && item.ContainerId == plan.DestinationContainerId && item.X == plan.X && item.Y == plan.Y && item.Rotated == plan.Rotated &&
+            item.ScopedRevision > plan.ExpectedItemRevision && snapshot.Container(plan.DestinationContainerId)?.ScopedRevision > plan.ExpectedDestinationRevision)
+            FinishInventory("Inventory confirmed by the server.");
     }
     private bool InventoryIntent(ulong expectedRevision, Action<DbConnection, string> send)
     {
@@ -230,7 +277,8 @@ public sealed class ClientCore : IDisposable
         if (InventoryPending) return false;
         if (Connection == null || !snapshot.Available) { InventoryMessage = "Connect and enter the world to manage your inventory."; return false; }
         if (expectedRevision != snapshot.Revision) { InventoryMessage = "Inventory changed while you were choosing. Review the updated items and try again."; return false; }
-        inventoryOperation = "godot:" + Guid.NewGuid().ToString("N");
+        inventoryCargo = null; inventoryPickup = null; inventoryReceiptConfirmed = false;
+        inventoryOperation = Guid.NewGuid().ToString("D");
         InventoryPending = true; inventoryDeadline = DateTimeOffset.UtcNow.AddSeconds(10);
         InventoryMessage = "Waiting for server confirmation…";
         try { send(Connection, inventoryOperation); }
@@ -238,7 +286,8 @@ public sealed class ClientCore : IDisposable
         return true;
     }
     public bool MoveItem(string item, string container, int x, int y, bool rotated, ulong revision) =>
-        InventoryIntent(revision, (connection, operation) => connection.Reducers.MoveInventoryItem(item, container, x, y, rotated, revision, operation));
+        Inventory.UsesScopedCargo(item, container) ? TransferCargo(item, container, revision, (x, y, rotated)) :
+            InventoryIntent(revision, (connection, operation) => connection.Reducers.MoveInventoryItem(item, container, x, y, rotated, revision, operation));
     public bool EquipItem(string item, ulong revision) =>
         InventoryIntent(revision, (connection, operation) => connection.Reducers.EquipInventoryItem(item, revision, operation));
     public bool AssignHotbar(byte slot, string item, ulong revision) => slot <= 4 &&
@@ -246,44 +295,42 @@ public sealed class ClientCore : IDisposable
     public bool ActivateHotbar(byte slot, ulong revision) => slot <= 4 &&
         InventoryIntent(revision, (connection, operation) => connection.Reducers.ActivateInventoryHotbar(slot, revision, operation));
     public void ClaimStarterKit() => Connection?.Reducers.ClaimStarterKit();
-    public void Enter(string name) => Connection?.Reducers.EnterLab(name);
-    public void ClaimControls()
+    public void Enter(string name) => TryEnter(name);
+    public bool TryEnter(string name)
     {
-        if (Connection == null || Character?.Connected != true) return;
-        Connection.Reducers.ClaimInputControl();
-        controls = true;
+        if (enterAttempt != null) return false;
+        if (Connection == null || active is not { Failed: false } session)
+        { CompleteEnter("uncertain", "Reconnect before explicitly retrying character entry."); return false; }
+        name = name.Trim();
+        if (name.Length < 2 || name.Length > 40)
+        { CompleteEnter("failed", "Use a character name between 2 and 40 characters."); return false; }
+        enterAttempt = new(session, name, Now + 10); enterReceiptConfirmed = false; EnterPhase = "pending"; EnterMessage = "Waiting for the server to accept your character…"; EnterEpoch++;
+        try { Connection.Reducers.EnterLab(name); }
+        catch { Stall(session); CompleteEnter("uncertain", "Character confirmation was interrupted. Reconnect, then explicitly retry."); return false; }
+        return true;
     }
-    public void ReleaseControls()
+    private void ObserveEnter()
     {
-        if (controls && Connection != null)
-        {
-            SendIntent(0, 0, 0, 0, false);
-            Connection.Reducers.ReleaseInputControl();
-        }
-        controls = false;
+        if (enterAttempt is not { } attempt) return;
+        if (enterReceiptConfirmed && Character?.Connected == true) { CompleteEnter("confirmed", "Character confirmed by the server."); return; }
+        if (active != attempt.Session || attempt.Session.Failed || Connection == null)
+        { CompleteEnter("uncertain", "Character confirmation was interrupted. Reconnect, then explicitly retry."); return; }
+        if (Now <= attempt.Deadline) return;
+        // EnterLab has no operation ID. Retire this socket before another explicit attempt
+        // so a late receipt for the same name cannot confirm a newer request.
+        Stall(attempt.Session);
+        CompleteEnter("uncertain", "Character confirmation is delayed. Reconnect, then explicitly retry.");
     }
-    public void SendIntent(double throttle, double turn, double dx, double dy, bool sprint)
-    {
-        if (!controls || active == null || Connection == null) return;
-        Connection.Reducers.SetIntent(++active.Sequence, throttle, turn, dx, dy, sprint);
-    }
-    public void ToggleSeat()
-    {
-        if (Connection == null) return;
-        if (Flight is { } flight)
-        {
-            if (flight.SeatState != "none") Connection.Reducers.LeaveAuthoredPilot();
-            else Connection.Reducers.EnterAuthoredPilot(flight.StationId, flight.StationRevision, "godot:" + Guid.NewGuid().ToString("N"));
-        }
-        else Connection.Reducers.UseStation();
-    }
+    private void CompleteEnter(string phase, string message)
+    { enterAttempt = null; enterReceiptConfirmed = false; EnterPhase = phase; EnterMessage = message; EnterEpoch++; }
     public void Dispose()
     {
         ReleaseControls();
         active?.Dispose(); pending?.Dispose();
-        active = pending = null; token = null;
+        active = pending = null; token = null; ResetGameplayContext();
         inventorySnapshot = null;
         FinishInventory("Sign in to manage your inventory.");
         Status = "Signed out.";
+        CompleteEnter("idle", "Choose a character name and enter.");
     }
 }

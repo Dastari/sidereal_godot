@@ -18,6 +18,8 @@ public partial class DockWindow : Control
     private Vector2 mouseStart, positionStart, sizeStart;
     private HBoxContainer title = null!;
     private MarginContainer body = null!;
+    private ScrollContainer? sidebar;
+    private float sidebarWidth;
     private readonly Vector2 minimum = new(280, 180);
 
     public DockWindow() { MouseFilter = MouseFilterEnum.Stop; }
@@ -32,7 +34,7 @@ public partial class DockWindow : Control
         Position = InitialPosition; Size = InitialSize;
         title = new HBoxContainer { MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.Drag, TooltipText = "Drag to move. Drag an edge or corner to resize." };
         title.AddChild(UiKit.Heading(Caption, 23)); title.AddChild(UiKit.Spacer());
-        var close = UiKit.Button("×", () => { Hide(); SaveLayout(); Closed?.Invoke(); });
+        var close = UiKit.Button("×", Close);
         close.TooltipText = "Close panel"; close.CustomMinimumSize = new Vector2(32, 30); title.AddChild(close);
         title.GuiInput += TitleInput; AddChild(title);
         body = new MarginContainer();
@@ -40,6 +42,7 @@ public partial class DockWindow : Control
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.Auto };
         scroll.AddChild(Content); body.AddChild(scroll); AddChild(body);
         Resized += LayoutContents;
+        VisibilityChanged+=()=>{if(!IsVisibleInTree())CancelInteraction();};
         SiderealPalette.Current.Changed += PaletteChanged;
         LoadLayout(); LayoutContents();
         GetParent<Control>().Resized += ParentResized;
@@ -51,7 +54,15 @@ public partial class DockWindow : Control
     {
         if (title == null) return;
         title.Position = new Vector2(14, 10); title.Size = new Vector2(Math.Max(0, Size.X - 28), 34);
-        body.Position = new Vector2(0, 49); body.Size = new Vector2(Size.X, Math.Max(0, Size.Y - 57)); QueueRedraw();
+        body.Position = new Vector2(sidebarWidth, 49); body.Size = new Vector2(Math.Max(1, Size.X - sidebarWidth), Math.Max(0, Size.Y - 57));
+        if (sidebar != null) { sidebar.Position = new Vector2(14, 58); sidebar.Size = new Vector2(Math.Max(1, sidebarWidth - 14), Math.Max(1, Size.Y - 73)); }
+        QueueRedraw();
+    }
+    public void SetSidebar(Control content, float width)
+    {
+        sidebarWidth = width;
+        sidebar = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        sidebar.AddChild(content); AddChild(sidebar); LayoutContents();
     }
 
     public override void _Draw()
@@ -135,6 +146,8 @@ public partial class DockWindow : Control
     }
 
     public void ResetLayout() { Position = InitialPosition; Size = InitialSize; Clamp(); SaveLayout(); }
+    public void CancelInteraction(){if(!InteractionActive)return;dragging=false;edges=0;Clamp();SaveLayout();}
+    public void Close(){CancelInteraction();Hide();SaveLayout();Closed?.Invoke();}
     private void LoadLayout()
     {
         var file = new ConfigFile(); if (file.Load("user://ui-layout.cfg") != Error.Ok) { Clamp(); return; }

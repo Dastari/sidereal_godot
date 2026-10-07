@@ -1,0 +1,947 @@
+{
+  "sourceRevision": "a35632deedf210cf43f64c43cb741d841f4a1ce0",
+  "dustLayout": [
+    {
+      "half": 8,
+      "aspect": 0.25,
+      "expected": {
+        "spacing": 8,
+        "columns": 12,
+        "rows": 48,
+        "count": 576
+      }
+    },
+    {
+      "half": 8,
+      "aspect": 1,
+      "expected": {
+        "spacing": 8,
+        "columns": 24,
+        "rows": 24,
+        "count": 576
+      }
+    },
+    {
+      "half": 8,
+      "aspect": 2.4,
+      "expected": {
+        "spacing": 8,
+        "columns": 37,
+        "rows": 15,
+        "count": 555
+      }
+    },
+    {
+      "half": 8,
+      "aspect": 4,
+      "expected": {
+        "spacing": 8,
+        "columns": 48,
+        "rows": 12,
+        "count": 576
+      }
+    },
+    {
+      "half": 55,
+      "aspect": 0.25,
+      "expected": {
+        "spacing": 8,
+        "columns": 12,
+        "rows": 48,
+        "count": 576
+      }
+    },
+    {
+      "half": 55,
+      "aspect": 1,
+      "expected": {
+        "spacing": 8,
+        "columns": 24,
+        "rows": 24,
+        "count": 576
+      }
+    },
+    {
+      "half": 55,
+      "aspect": 2.4,
+      "expected": {
+        "spacing": 16,
+        "columns": 37,
+        "rows": 15,
+        "count": 555
+      }
+    },
+    {
+      "half": 55,
+      "aspect": 4,
+      "expected": {
+        "spacing": 16,
+        "columns": 48,
+        "rows": 12,
+        "count": 576
+      }
+    },
+    {
+      "half": 650,
+      "aspect": 0.25,
+      "expected": {
+        "spacing": 32,
+        "columns": 12,
+        "rows": 48,
+        "count": 576
+      }
+    },
+    {
+      "half": 650,
+      "aspect": 1,
+      "expected": {
+        "spacing": 64,
+        "columns": 24,
+        "rows": 24,
+        "count": 576
+      }
+    },
+    {
+      "half": 650,
+      "aspect": 2.4,
+      "expected": {
+        "spacing": 128,
+        "columns": 37,
+        "rows": 15,
+        "count": 555
+      }
+    },
+    {
+      "half": 650,
+      "aspect": 4,
+      "expected": {
+        "spacing": 128,
+        "columns": 48,
+        "rows": 12,
+        "count": 576
+      }
+    }
+  ],
+  "dustCell": [
+    {
+      "x": 0,
+      "y": 0,
+      "spacing": 8,
+      "index": 0,
+      "expected": {
+        "x": -91.5417989593795,
+        "y": -88.9057403823607,
+        "height": -41.20406784797182,
+        "size": 0.2057438476322554,
+        "lengthVariation": 1.1278851970978745
+      }
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "spacing": 8,
+      "index": 1,
+      "expected": {
+        "x": -82.94562443414368,
+        "y": -91.08393855464736,
+        "height": -18.963849131708,
+        "size": 0.22948666112066402,
+        "lengthVariation": 1.1253364263044987
+      }
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "spacing": 8,
+      "index": 271,
+      "expected": {
+        "x": -39.41107129664418,
+        "y": -5.250271174416475,
+        "height": -43.27034277684762,
+        "size": 0.233372632399521,
+        "lengthVariation": 1.0611190829219108
+      }
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "spacing": 8,
+      "index": 575,
+      "expected": {
+        "x": 94.43647389263764,
+        "y": 95.22622071933611,
+        "height": -20.964797907267883,
+        "size": 0.21653387699661167,
+        "lengthVariation": 0.9221280547259674
+      }
+    },
+    {
+      "x": -800.125,
+      "y": 1199.75,
+      "spacing": 16,
+      "index": 0,
+      "expected": {
+        "x": -202.63257621106635,
+        "y": -198.09692716746287,
+        "height": -18.103382086405386,
+        "size": 0.7133917300685756,
+        "lengthVariation": 0.8132387929743247
+      }
+    },
+    {
+      "x": -800.125,
+      "y": 1199.75,
+      "spacing": 16,
+      "index": 1,
+      "expected": {
+        "x": -190.31323543527122,
+        "y": -202.35723491632547,
+        "height": -38.753694439948006,
+        "size": 0.5528036521879964,
+        "lengthVariation": 1.0970843238632857
+      }
+    },
+    {
+      "x": -800.125,
+      "y": 1199.75,
+      "spacing": 16,
+      "index": 271,
+      "expected": {
+        "x": -88.40363090311378,
+        "y": -30.189284052336422,
+        "height": -35.325865640613685,
+        "size": 0.5805446867320093,
+        "lengthVariation": 0.9738823164775694
+      }
+    },
+    {
+      "x": -800.125,
+      "y": 1199.75,
+      "spacing": 16,
+      "index": 575,
+      "expected": {
+        "x": 173.34759954298443,
+        "y": 161.1072743835061,
+        "height": -13.363695006669428,
+        "size": 0.6568323868664057,
+        "lengthVariation": 0.8074285778350729
+      }
+    },
+    {
+      "x": 1000000000000.25,
+      "y": -1000000000000.75,
+      "spacing": 64,
+      "index": 0,
+      "expected": {
+        "x": -712.5905162264454,
+        "y": -810.5235906344078,
+        "height": -49.56933455159174,
+        "size": 2.5504943832583944,
+        "lengthVariation": 0.9140325973192306
+      }
+    },
+    {
+      "x": 1000000000000.25,
+      "y": -1000000000000.75,
+      "spacing": 64,
+      "index": 1,
+      "expected": {
+        "x": -698.9885653692155,
+        "y": -788.1585036117837,
+        "height": -47.07646584582433,
+        "size": 1.715475435820286,
+        "lengthVariation": 0.8959318890576092
+      }
+    },
+    {
+      "x": 1000000000000.25,
+      "y": -1000000000000.75,
+      "spacing": 64,
+      "index": 271,
+      "expected": {
+        "x": -277.33832744254926,
+        "y": -97.35105452735468,
+        "height": -28.29107605207038,
+        "size": 2.684541967346459,
+        "lengthVariation": 1.119170641240005
+      }
+    },
+    {
+      "x": 1000000000000.25,
+      "y": -1000000000000.75,
+      "spacing": 64,
+      "index": 575,
+      "expected": {
+        "x": 753.3624632623075,
+        "y": 658.0455623458362,
+        "height": -47.95552309322067,
+        "size": 2.5348314863831813,
+        "lengthVariation": 0.9487409166523117
+      }
+    }
+  ],
+  "dustMotion": [
+    {
+      "vx": 0,
+      "vy": 0,
+      "reduced": false,
+      "expected": {
+        "speed": 0,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 0
+      }
+    },
+    {
+      "vx": 0,
+      "vy": 0,
+      "reduced": true,
+      "expected": {
+        "speed": 0,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 0
+      }
+    },
+    {
+      "vx": 24,
+      "vy": 32,
+      "reduced": false,
+      "expected": {
+        "speed": 40,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 24,
+      "vy": 32,
+      "reduced": true,
+      "expected": {
+        "speed": 40,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 96,
+      "vy": 128,
+      "reduced": false,
+      "expected": {
+        "speed": 160,
+        "length": 0.48,
+        "streakRatio": 3,
+        "warpBlend": 0,
+        "intensity": 0.92,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 96,
+      "vy": 128,
+      "reduced": true,
+      "expected": {
+        "speed": 160,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 360,
+      "vy": 480,
+      "reduced": false,
+      "expected": {
+        "speed": 600,
+        "length": 0.48,
+        "streakRatio": 3,
+        "warpBlend": 0,
+        "intensity": 0.92,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 360,
+      "vy": 480,
+      "reduced": true,
+      "expected": {
+        "speed": 600,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 840,
+      "vy": 1120,
+      "reduced": false,
+      "expected": {
+        "speed": 1400,
+        "length": 2.32,
+        "streakRatio": 14.5,
+        "warpBlend": 0.25925925925925924,
+        "intensity": 1.0366666666666666,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 840,
+      "vy": 1120,
+      "reduced": true,
+      "expected": {
+        "speed": 1400,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 1800,
+      "vy": 2400,
+      "reduced": false,
+      "expected": {
+        "speed": 3000,
+        "length": 7.68,
+        "streakRatio": 48,
+        "warpBlend": 1,
+        "intensity": 1.37,
+        "heading": 2.498091544796509
+      }
+    },
+    {
+      "vx": 1800,
+      "vy": 2400,
+      "reduced": true,
+      "expected": {
+        "speed": 3000,
+        "length": 0.16,
+        "streakRatio": 1,
+        "warpBlend": 0,
+        "intensity": 0.8,
+        "heading": 2.498091544796509
+      }
+    }
+  ],
+  "background": [
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": 0,
+        "y": 0,
+        "height": 0
+      },
+      "expected": [
+        {
+          "id": "orion-veil",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": 30,
+        "y": 0,
+        "height": 0
+      },
+      "expected": [
+        {
+          "id": "orion-veil",
+          "weight": 0.15625
+        },
+        {
+          "id": "veil-nebula",
+          "weight": 0.84375
+        }
+      ]
+    },
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": 60,
+        "y": 0,
+        "height": 0
+      },
+      "expected": [
+        {
+          "id": "system-blue",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": 210,
+        "y": 0,
+        "height": 0
+      },
+      "expected": [
+        {
+          "id": "deep-space",
+          "weight": 0.5
+        },
+        {
+          "id": "system-blue",
+          "weight": 0.5
+        }
+      ]
+    },
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": 300,
+        "y": 0,
+        "height": 0
+      },
+      "expected": [
+        {
+          "id": "deep-space",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "region": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "height": 0
+        },
+        "radius": 240,
+        "feather": 60,
+        "backgroundId": "system-blue",
+        "zones": [
+          {
+            "id": "root",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 400,
+            "length": 400,
+            "depth": 200,
+            "vertices": [],
+            "backgroundId": "system-blue",
+            "feather": 20,
+            "priority": 0,
+            "level": 0,
+            "ancestors": [],
+            "root": true
+          },
+          {
+            "id": "cloud",
+            "x": 0,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 120,
+            "length": 140,
+            "depth": 80,
+            "vertices": [],
+            "backgroundId": "orion-veil",
+            "feather": 20,
+            "priority": 0,
+            "level": 1,
+            "ancestors": [
+              "root"
+            ],
+            "root": false
+          },
+          {
+            "id": "hot",
+            "x": 30,
+            "y": 0,
+            "height": 0,
+            "shape": "box",
+            "width": 40,
+            "length": 40,
+            "depth": 30,
+            "vertices": [],
+            "backgroundId": "veil-nebula",
+            "feather": 20,
+            "priority": 0,
+            "level": 2,
+            "ancestors": [
+              "root",
+              "cloud"
+            ],
+            "root": false
+          }
+        ],
+        "fields": []
+      },
+      "point": {
+        "x": -50,
+        "y": -60,
+        "height": 20
+      },
+      "expected": [
+        {
+          "id": "system-blue",
+          "weight": 0.5
+        },
+        {
+          "id": "orion-veil",
+          "weight": 0.5
+        }
+      ]
+    }
+  ]
+}

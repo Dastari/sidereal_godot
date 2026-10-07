@@ -28,6 +28,8 @@ namespace Sidereal.Bindings
         public string TargetPrefabId;
         [DataMember(Name = "expected_target_blueprint_sha_256")]
         public string ExpectedTargetBlueprintSha256;
+        [DataMember(Name = "from_dry_run_operation_id")]
+        public string? FromDryRunOperationId;
 
         public OperatorUpgradePrefabShip(
             string OperationId,
@@ -36,7 +38,8 @@ namespace Sidereal.Bindings
             string ExpectedSourceBlueprintSha256,
             ulong ExpectedInstanceRevision,
             string TargetPrefabId,
-            string ExpectedTargetBlueprintSha256
+            string ExpectedTargetBlueprintSha256,
+            string? FromDryRunOperationId
         )
         {
             this.OperationId = OperationId;
@@ -46,6 +49,7 @@ namespace Sidereal.Bindings
             this.ExpectedInstanceRevision = ExpectedInstanceRevision;
             this.TargetPrefabId = TargetPrefabId;
             this.ExpectedTargetBlueprintSha256 = ExpectedTargetBlueprintSha256;
+            this.FromDryRunOperationId = FromDryRunOperationId;
         }
 
         public OperatorUpgradePrefabShip()

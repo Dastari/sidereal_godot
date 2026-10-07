@@ -4,7 +4,7 @@
 Normal clone/build needs no browser repository. --verify checks bundled bytes.
 Maintainers regenerate from a read-only browser checkout with Node dependencies:
   python3 scripts/godot_world_assets.py --source-repo /root/sidereal_spacetime
-No server access, database publication, geometry generation, or art reauthoring occurs.
+No server access, database publication, or art reauthoring occurs.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import struct
 import tarfile
 import tempfile
 
-SOURCE_REVISION = "e749d5d877ef18ac7421fb003f55effd7e01a404"
+SOURCE_REVISION = "a35632deedf210cf43f64c43cb741d841f4a1ce0"
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEST = ROOT / "Assets" / "World"
 
@@ -38,6 +38,8 @@ import {authoredTemplatePropulsion} from './packages/render/src/prefab-ship/auth
 import {authoredInstanceMatrix} from './packages/render/src/prefab-ship/wayfarer-authored-study.ts';
 import {authoredProfilePoint,prefabClipPlanes,clipAuthoredGeometry} from './packages/render/src/prefab-ship/authored-template-geometry.ts';
 import {readAuthoredAssetLighting} from './packages/render/src/authored-asset-lighting.ts';
+import {groundItemMeshUrl} from './packages/render/src/ground-items.ts';
+import {INVENTORY_DEFINITIONS} from './packages/content/src/inventory.ts';
 import {Matrix,Vector3} from '@babylonjs/core/Maths/math.vector';
 import {SHIP_THEMES} from './packages/content/src/ship-themes.ts';
 import {deckObjectVisualUrl,interiorArtQuarterTurns} from './packages/content/src/ship-furniture.ts';
@@ -56,7 +58,9 @@ function asset(source:string,pin?:string,node?:string) {
   const bytes=fs.readFileSync(source), digest=sha(bytes);
   if(pin && pin!==digest) throw Error('Changed source asset '+source);
   const file=source.replace(/^assets\/runtime\//,'');
-  assets.set(file,{file,source,sha256:digest,bytes:bytes.length});
+  const gltf=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString('utf8'));
+  const gameMaterials=(gltf.materials??[]).map((m:any)=>{const strength=m.extensions?.KHR_materials_emissive_strength?.emissiveStrength??1;const owned=templateLighting.get(digest)?.emissions[m.name];if(owned&&(owned.strength!==strength||JSON.stringify(owned.factor)!==JSON.stringify(m.emissiveFactor)))throw Error('Changed asset-owned emission '+file);return {name:m.name,family:m.extras?.sr_family??null,emissionFactor:m.emissiveFactor??[0,0,0],emissionStrength:owned?strength:Math.min(strength,1),assetOwnedEmission:!!owned};});
+  assets.set(file,{file,source,sha256:digest,bytes:bytes.length,gameMaterials});
   return {file,node:node??null};
 }
 function finalMatrix(m:number[],origin:number[],height=0) {
@@ -164,14 +168,49 @@ const surfaceContractFixtures=[
  {id:'profile-jacobian',matrix:identity,planes:[],profile:{bottom:[.2,-.1,2],top:[.4,.1,4]},origin:[3,2]},
  {id:'clip-profile-combined',matrix:identity,planes:[[1,0,0,.25],[0,-1,0,3.75]],profile:{bottom:[.2,-.1,2],top:[.4,.1,4]},origin:[3,2]},
 ].map(f=>({...f,source:surfaceProbe,expected:clipAuthoredGeometry(surfaceProbe,Matrix.FromArray(f.matrix),f.planes as any,f.profile??undefined,f.origin as [number,number])}));
-console.log(JSON.stringify({schema:'sidereal.native-world-assets.v1',sourceRevision:process.env.SIDEREAL_SOURCE_REVISION,sourceRepository:'https://github.com/Dastari/sidereal_spacetime',approval:'Published game assets with canonical runtime clipping/profile adaptation and separately pinned compatibility derivatives where declared; integration is not new art approval.',ships,surfaceContractFixtures,themes:SHIP_THEMES,assets:[...assets.values()].sort((a,b)=>a.file.localeCompare(b.file)),sources:metadata.map(source=>({source,sha256:sha(fs.readFileSync(source)),bytes:fs.statSync(source).size}))}));
+const groundItems=INVENTORY_DEFINITIONS.map(d=>{const url=groundItemMeshUrl(d);const file=url?.split('?')[0];if(!file)return{definitionId:d.id,file:null,layDown:!!d.pose};return{definitionId:d.id,...asset(file),layDown:!!d.pose};});
+metadata.push('packages/render/src/ground-items.ts','packages/content/src/inventory.ts','packages/content/src/item-presentation.ts');
+console.log(JSON.stringify({schema:'sidereal.native-world-assets.v1',sourceRevision:process.env.SIDEREAL_SOURCE_REVISION,sourceRepository:'https://github.com/Dastari/sidereal_spacetime',approval:'Published game assets with canonical runtime clipping/profile adaptation and separately pinned compatibility derivatives where declared; integration is not new art approval.',ships,groundItems,surfaceContractFixtures,themes:SHIP_THEMES,assets:[...assets.values()].sort((a,b)=>a.file.localeCompare(b.file)),sources:metadata.map(source=>({source,sha256:sha(fs.readFileSync(source)),bytes:fs.statSync(source).size}))}));
 '''
+
+
+def refresh_camera(manifest: dict, repo: pathlib.Path) -> None:
+    """Source-pinned deck-frame data plus independently executed camera rules."""
+    source_paths = ["packages/render/src/construction-instance.ts", "packages/render/src/index.ts", "packages/render/src/camera.ts"]
+    raw = {path: subprocess.check_output(["git", "show", f"{SOURCE_REVISION}:{path}"], cwd=repo) for path in source_paths}
+    assert b"Math.max(3, Math.min(12, constructionFrame.halfExtent * 1.5))" in raw[source_paths[1]]
+    assert b"Math.max(4, constructionFrame.halfExtent * 1.5)" in raw[source_paths[1]]
+    fixtures = []
+    for ship in manifest["ships"]:
+        layout = ship["document"]["layout"]
+        deck = layout["playableDeckId"]
+        vertices = [p for tile in layout["tiles"] if tile["deckId"] == deck for p in tile["vertices"]]
+        xs, ys = [p[0] / 32 for p in vertices], [p[1] / 32 for p in vertices]
+        half = max(max(xs) - min(xs), max(ys) - min(ys)) / 2
+        frame = {"deckId": deck, "centerX": (min(xs) + max(xs)) / 2, "centerY": (min(ys) + max(ys)) / 2,
+                 "halfExtent": half, "initialDeckZoom": max(3, min(12, half * 1.5)), "initialFlightZoom": max(4, half * 1.5)}
+        ship["cameraFrame"] = frame
+        fixtures.append({"prefabId": ship["id"], "revision": ship["revision"], "prefabSha256": ship["prefabSha256"], **frame})
+    with tempfile.TemporaryDirectory(prefix="sidereal-native-camera-") as temporary:
+        camera = pathlib.Path(temporary) / "camera.ts"
+        camera.write_bytes(raw[source_paths[2]])
+        node = "import {deckCameraActorWeight,easeCameraZoom} from " + json.dumps(camera.as_uri()) + ";" + "console.log(JSON.stringify({actorWeights:[{half:7.5,overview:7.5},{half:4.75,overview:7.5},{half:2,overview:7.5},{half:12,overview:12}].map(v=>({...v,expected:deckCameraActorWeight(v.half,v.overview)})),zoomEasing:[{current:7.5,target:2,dt:1/60},{current:16.5,target:40,dt:.1}].map(v=>({...v,expected:easeCameraZoom(v.current,v.target,v.dt)}))}));"
+        rules = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", node]))
+    golden = {"schema": "sidereal.native-camera-golden.v1", "sourceRevision": SOURCE_REVISION,
+              "scope": "Public canonical deck vertices and source-executed presentation math; no world state",
+              "sources": [{"source": path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)} for path, data in raw.items()],
+              "fixtures": fixtures, **rules}
+    data = (json.dumps(golden, indent=2, ensure_ascii=False) + "\n").encode()
+    (DEST / "camera-golden.json").write_bytes(data)
+    manifest["cameraGolden"] = {"file": "camera-golden.json", "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
 
 
 def verify() -> None:
     manifest = json.loads((DEST / "manifest.json").read_text())
     assert manifest["schema"] == "sidereal.native-world-assets.v1"
     assert manifest["sourceRevision"] == SOURCE_REVISION
+    historical = manifest["historicalShips"]
+    assert hashlib.sha256((DEST / historical["file"]).read_bytes()).hexdigest() == historical["sha256"]
     total = 0
     for entry in manifest["assets"]:
         file = (DEST / entry["file"]).resolve()
@@ -195,6 +234,10 @@ def verify() -> None:
     assert hashlib.sha256(golden_bytes).hexdigest() == golden_entry["sha256"]
     golden = json.loads(golden_bytes)
     assert golden["sourceRevision"] == SOURCE_REVISION and len(golden["fixtures"]) == 4
+    camera_entry = manifest["cameraGolden"]
+    camera_bytes = (DEST / camera_entry["file"]).read_bytes()
+    assert len(camera_bytes) == camera_entry["bytes"] and hashlib.sha256(camera_bytes).hexdigest() == camera_entry["sha256"]
+    assert json.loads(camera_bytes)["sourceRevision"] == SOURCE_REVISION
     print(f"Verified {len(manifest['ships'])} exact public ship documents, {len(manifest['assets'])} assets, {total:,} asset bytes")
 
 
@@ -252,7 +295,7 @@ def decode_quantized_normals(data: bytes) -> bytes:
 
 
 def generate(repo: pathlib.Path) -> None:
-    paths = ["packages/content", "packages/sim", "packages/render", "assets/runtime/ship-study", "assets/runtime/ship-kit/r002", "assets/runtime/ship-components/r004", "assets/runtime/ship-objects/r001", "tsconfig.json", "package.json"]
+    paths = ["packages/content", "packages/sim", "packages/render", "assets/runtime/ship-study", "assets/runtime/ship-kit/r002", "assets/runtime/ship-components/r004", "assets/runtime/ship-access", "assets/runtime/wayfarer-access", "assets/runtime/ship-objects/r001", "assets/runtime/crew/armor-v1", "assets/runtime/crew/items/r001", "assets/runtime/crew/components", "assets/runtime/equipment", "tsconfig.json", "package.json"]
     archive = subprocess.check_output(["git", "archive", SOURCE_REVISION, *paths], cwd=repo)
     with tempfile.TemporaryDirectory(prefix="sidereal-native-world-") as temp:
         source = pathlib.Path(temp)
@@ -269,6 +312,12 @@ def generate(repo: pathlib.Path) -> None:
         env = dict(os.environ, SIDEREAL_SOURCE_REVISION=SOURCE_REVISION)
         output = subprocess.check_output([str(deps / ".bin" / "tsx"), "--tsconfig", str(source / "tsconfig-export.json"), str(source / "native-world-export.ts")], cwd=source, env=env)
         manifest = json.loads(output)
+        historical_file = DEST / "historical-ships.json"
+        historical_bytes = historical_file.read_bytes()
+        historical = json.loads(historical_bytes)
+        assert historical["schema"] == "sidereal.native-historical-ships.v1"
+        manifest["ships"].extend(historical["ships"])
+        manifest["historicalShips"] = {"file": "historical-ships.json", "sha256": hashlib.sha256(historical_bytes).hexdigest()}
         DEST.mkdir(parents=True, exist_ok=True)
         for entry in manifest["assets"]:
             data = (source / entry["source"]).read_bytes()
@@ -292,6 +341,7 @@ def generate(repo: pathlib.Path) -> None:
         golden_bytes = (json.dumps(golden, indent=2, ensure_ascii=False) + "\n").encode()
         (DEST / "surface-golden.json").write_bytes(golden_bytes)
         manifest["surfaceGolden"] = {"file": "surface-golden.json", "sha256": hashlib.sha256(golden_bytes).hexdigest(), "bytes": len(golden_bytes)}
+        refresh_camera(manifest, repo)
         (DEST / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
         # This directory is the generated public bundle; prune superseded source assets.
         retained = {entry["file"] for entry in manifest["assets"]}
@@ -306,8 +356,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-repo", type=pathlib.Path)
     parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--camera-only", action="store_true", help="Refresh source-pinned camera metadata without rewriting any GLB")
     args = parser.parse_args()
-    if args.source_repo:
+    if args.camera_only:
+        if not args.source_repo:
+            parser.error("--camera-only requires the read-only --source-repo")
+        manifest = json.loads((DEST / "manifest.json").read_text())
+        refresh_camera(manifest, args.source_repo.resolve())
+        (DEST / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+        verify()
+    elif args.source_repo:
         generate(args.source_repo.resolve())
     else:
         verify()

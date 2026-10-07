@@ -1,6 +1,6 @@
 {
   "schema": "sidereal.native-world-surface-golden.v1",
-  "sourceRevision": "e749d5d877ef18ac7421fb003f55effd7e01a404",
+  "sourceRevision": "a35632deedf210cf43f64c43cb741d841f4a1ce0",
   "scope": "Synthetic numerical contract cases, not renderable game art or world state",
   "functions": [
     "clipAuthoredGeometry",

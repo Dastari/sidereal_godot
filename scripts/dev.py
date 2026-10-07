@@ -124,9 +124,12 @@ def main():
     parser.add_argument('--module-artifact')
     parser.add_argument('--artifact-sha256')
     parser.add_argument('--operator-config', help='Private deployment CLI config; only its subject is used for the isolated fixture')
+    parser.add_argument('--export-directory', help='Stage native packages for review before replacing served downloads')
     args = parser.parse_args()
+    if args.export_directory and args.command != 'godot-export':
+        parser.error('--export-directory applies only to godot-export')
     import godot
-    godot.command(args.command.removeprefix('godot-'), sys.modules[__name__], args.module_artifact, args.artifact_sha256, args.operator_config)
+    godot.command(args.command.removeprefix('godot-'), sys.modules[__name__], args.module_artifact, args.artifact_sha256, args.operator_config, args.export_directory)
 
 
 if __name__ == '__main__':

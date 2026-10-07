@@ -1,7 +1,8 @@
 using System;
+using System.Linq;
 using Godot;
-using Sidereal.Native;
 using Sidereal.Ui;
+using Sidereal.Native;
 
 namespace Sidereal.InventoryUi;
 
@@ -10,81 +11,105 @@ public partial class HotbarView : HBoxContainer
     private readonly ClientCore core;
     private readonly bool demo;
     private readonly HotbarSlot[] slots;
+    private readonly Label actionCaption,quickCaption;
+    public System.Collections.Generic.IReadOnlyList<Control> VisualSlots => slots;
+    private readonly string[] quick = new string[2];
+    public event Action<string>? InspectRequested;
+    public event Action? OpenInventoryRequested;
+    public string AssignmentItemId {get;set;}="";
     public HotbarView(ClientCore core, bool demo)
     {
-        this.core = core; this.demo = demo;
-        InventoryPresentation.EnsureCatalogue();
-        AddThemeConstantOverride("separation", 8);
-        slots = new HotbarSlot[5];
-        for (byte slot = 0; slot < 5; slot++) { slots[slot] = new HotbarSlot(core, demo, slot); AddChild(slots[slot]); }
+        this.core=core;this.demo=demo;InventoryPresentation.EnsureCatalogue();SizeFlagsVertical=SizeFlags.ExpandFill;AddThemeConstantOverride("separation",10);
+        var main=new VBoxContainer {SizeFlagsHorizontal=SizeFlags.ExpandFill,SizeFlagsVertical=SizeFlags.ExpandFill};main.AddThemeConstantOverride("separation",5);
+        actionCaption=UiKit.Label("ACTION BAR",10);actionCaption.ThemeTypeVariation="AccentLabel";main.AddChild(actionCaption);
+        var quickColumn=new VBoxContainer {SizeFlagsHorizontal=SizeFlags.ExpandFill,SizeFlagsVertical=SizeFlags.ExpandFill};quickColumn.AddThemeConstantOverride("separation",5);
+        quickCaption=UiKit.Label("QUICK SLOTS",10);quickCaption.ThemeTypeVariation="AccentLabel";quickColumn.AddChild(quickCaption);
+        var mainSlots=new HBoxContainer {SizeFlagsHorizontal=SizeFlags.ExpandFill,SizeFlagsVertical=SizeFlags.ExpandFill};mainSlots.AddThemeConstantOverride("separation",5);main.AddChild(mainSlots);
+        var quickSlots=new HBoxContainer {SizeFlagsHorizontal=SizeFlags.ExpandFill,SizeFlagsVertical=SizeFlags.ExpandFill};quickSlots.AddThemeConstantOverride("separation",5);quickColumn.AddChild(quickSlots);
+        var mainFrame=UiKit.Panel(main,0,"CompactFramePanel");mainFrame.SizeFlagsHorizontal=SizeFlags.ExpandFill;mainFrame.SizeFlagsStretchRatio=4;AddChild(mainFrame);
+        var quickFrame=UiKit.Panel(quickColumn,0,"CompactFramePanel");quickFrame.SizeFlagsHorizontal=SizeFlags.ExpandFill;AddChild(quickFrame);
+        slots = new HotbarSlot[10];
+        for(byte i=0;i<10;i++){var index=i;slots[i]=new HotbarSlot(core,demo,i,()=>ActivateSlot(index),id=>quick[index-8]=id);slots[i].SizeFlagsVertical=SizeFlags.ExpandFill;(i<8?mainSlots:quickSlots).AddChild(slots[i]);}
         Refresh();
     }
-    public void Refresh() { var snapshot = InventoryPresentation.Read(core, demo); foreach (var slot in slots) slot.Refresh(snapshot); }
+    public void SetCompact(bool compact)
+    {
+        actionCaption.Visible=quickCaption.Visible=!compact;
+        foreach(var slot in slots)slot.CustomMinimumSize=new Vector2(compact?20:32,compact?40:48);
+    }
+    private void QuickInspect(int index)
+    {
+        if(index is <0 or >1||core.InventoryPending)return;
+        if(InventoryPresentation.Read(core,demo).Item(AssignmentItemId)!=null){quick[index]=AssignmentItemId;return;}
+        var id=quick[index];if(!string.IsNullOrEmpty(id))InspectRequested?.Invoke(id);else OpenInventoryRequested?.Invoke();
+    }
+    private void ActivateSlot(byte slot)
+    {
+        if(slot>=8){QuickInspect(slot-8);return;}if(slot>=5||core.InventoryPending)return;
+        var snapshot=InventoryPresentation.Read(core,demo);
+        if(snapshot.Item(AssignmentItemId)?.Definition?.EquipSlot.Length>0){if(demo)DemoInventory.Assign(slot,AssignmentItemId);else core.AssignHotbar(slot,AssignmentItemId,snapshot.Revision);return;}
+        if(snapshot.Hotbar.TryGetValue(slot,out var item)&&item.Length>0){if(demo)DemoInventory.Equip(item);else core.ActivateHotbar(slot,snapshot.Revision);}
+        else OpenInventoryRequested?.Invoke();
+    }
+    public void Refresh()
+    {
+        var snapshot=InventoryPresentation.Read(core,demo);
+        foreach(var (definition,index) in new[]{("medkit",0),("power-cell",1)})
+            if(snapshot.Item(quick[index])==null)quick[index]=snapshot.Items.FirstOrDefault(i=>i.DefinitionId==definition)?.Id??"";
+        var assignment=snapshot.Item(AssignmentItemId);
+        for(var i=0;i<slots.Length;i++)slots[i].Refresh(snapshot,i>=8?quick[i-8]:null,assignment);
+    }
     public override void _UnhandledInput(InputEvent input)
     {
-        if (!IsVisibleInTree() || input is not InputEventKey { Pressed: true, Echo: false } key ||
-            GetViewport().GuiGetFocusOwner() != null || GetViewport().GuiIsDragging()) return;
-        for (Node? parent = GetParent(); parent != null; parent = parent.GetParent())
-            if (parent is SiderealUi { GameplayShortcutBlocked: true }) return;
-        var number = (long)key.Keycode;
-        if (number < '1' || number > '5') return;
-        var slot = (byte)(number - '1');
-        var snapshot = InventoryPresentation.Read(core, demo);
-        if (demo) { if (snapshot.Hotbar.TryGetValue(slot, out var item)) DemoInventory.Equip(item); }
-        else if (snapshot.Hotbar.TryGetValue(slot, out var item) && item.Length > 0) core.ActivateHotbar(slot, snapshot.Revision);
+        if(!IsVisibleInTree()||input is not InputEventKey {Pressed:true,Echo:false} key||GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit||GetViewport().GuiIsDragging())return;
+        for(Node? parent=GetParent();parent!=null;parent=parent.GetParent())if(parent is SiderealUi {GameplayShortcutBlocked:true})return;
+        if(key.PhysicalKeycode is Key.Key9 or Key.Key0){QuickInspect(key.PhysicalKeycode==Key.Key9?0:1);GetViewport().SetInputAsHandled();return;}
+        var number=(long)key.PhysicalKeycode;if(number<'1'||number>'5')return;var slot=(byte)(number-'1');
+        ActivateSlot(slot);
         GetViewport().SetInputAsHandled();
     }
 }
 
 internal partial class HotbarSlot : Control
 {
-    private readonly ClientCore core;
-    private readonly bool demo;
-    private readonly byte slot;
-    private InventorySnapshot snapshot = InventorySnapshot.Empty;
-    private InventoryItemView? item;
-    private bool hover;
-    public HotbarSlot(ClientCore core, bool demo, byte slot)
+    private readonly ClientCore core;private readonly bool demo;private readonly byte slot;private readonly Action inspect;private readonly Action<string> bindQuick;
+    private InventorySnapshot snapshot=InventorySnapshot.Empty;private InventoryItemView? item;private bool hover;
+    private bool Reserved=>slot is >=5 and <8;private bool Quick=>slot>=8;
+    public HotbarSlot(ClientCore core,bool demo,byte slot,Action inspect,Action<string> bindQuick)
     {
-        this.core = core; this.demo = demo; this.slot = slot;
-        CustomMinimumSize = new Vector2(64, 64); SizeFlagsHorizontal = SizeFlags.ExpandFill; MouseFilter = MouseFilterEnum.Stop;
-        MouseEntered += () => { hover = true; QueueRedraw(); };
-        MouseExited += () => { hover = false; QueueRedraw(); };
+        this.core=core;this.demo=demo;this.slot=slot;this.inspect=inspect;this.bindQuick=bindQuick;
+        CustomMinimumSize=new Vector2(32,48);SizeFlagsHorizontal=SizeFlags.ExpandFill;MouseFilter=MouseFilterEnum.Stop;FocusMode=Reserved?FocusModeEnum.None:FocusModeEnum.All;
+        MouseEntered+=()=>{hover=true;QueueRedraw();};MouseExited+=()=>{hover=false;QueueRedraw();};FocusEntered+=QueueRedraw;FocusExited+=QueueRedraw;
     }
-    public void Refresh(InventorySnapshot next)
+    public void Refresh(InventorySnapshot next,string? quick,InventoryItemView? assignment=null)
     {
-        snapshot = next; item = next.Hotbar.TryGetValue(slot, out var id) ? next.Item(id) : null;
-        TooltipText = item != null ? ItemDrag.Tooltip(item) + $"\nPress {slot + 1} or click to equip. Right-click clears this reference." : $"Quick slot {slot + 1}\nDrag an equippable item here. This is a reference, not a second item.";
-        QueueRedraw();
+        snapshot=next;item=Quick?next.Item(quick??""):next.Hotbar.TryGetValue(slot,out var id)?next.Item(id):null;
+        TooltipText=!ItemDrag.TooltipsAllowed(this,core)?"":Reserved?"Reserved action slot. No operation is installed.":assignment!=null&&(Quick||assignment.Definition?.EquipSlot.Length>0)?$"Press {(Quick?(slot==8?9:0):slot+1)} or click to assign {assignment.Name}.":Quick? $"{(slot==8?9:0)}: {item?.Name??"Empty quick slot"}\nClick to inspect in inventory. Drag an item here to assign it.":
+            item!=null?ItemPresentation.Tooltip(core,item)+$"\nPress {slot+1} or click to equip. Right-click clears this reference.":$"Action {slot+1}\nDrag an equippable item here.";QueueRedraw();
     }
-    public override bool _CanDropData(Vector2 position, Variant data) => ItemDrag.Payload(data) && ItemDrag.Current is { } drag && drag.Core == core && drag.Demo == demo && !core.InventoryPending && drag.Item.Definition?.EquipSlot.Length > 0;
-    public override GodotObject _MakeCustomTooltip(string forText) => UiKit.Tooltip(item?.Name ?? $"Quick slot {slot + 1}", forText);
-    public override void _DropData(Vector2 position, Variant data)
-    {
-        if (!_CanDropData(position, data) || ItemDrag.Current is not { } drag) return;
-        if (demo) DemoInventory.Assign(slot, drag.Item.Id); else core.AssignHotbar(slot, drag.Item.Id, drag.Revision);
-    }
+    public override GodotObject _MakeCustomTooltip(string text)=>UiKit.Tooltip(item?.Name??(Reserved?"Reserved action":"Unassigned slot"),text,ItemPresentation.Rarity(item?.Definition));
+    public override bool _CanDropData(Vector2 at,Variant data)=>!Reserved&&ItemDrag.Payload(data)&&ItemDrag.Current is {} drag&&drag.Core==core&&drag.Demo==demo&&!core.InventoryPending&&(Quick||drag.Item.Definition?.EquipSlot.Length>0);
+    public override void _DropData(Vector2 at,Variant data)
+    { if(!_CanDropData(at,data)||ItemDrag.Current is not {} drag)return;if(Quick)bindQuick(drag.Item.Id);else if(demo)DemoInventory.Assign(slot,drag.Item.Id);else core.AssignHotbar(slot,drag.Item.Id,drag.Revision); }
     public override void _GuiInput(InputEvent input)
     {
-        if (input is not InputEventMouseButton { Pressed: true } mouse) return;
-        if (mouse.ButtonIndex == MouseButton.Right)
-        { if (demo) DemoInventory.Assign(slot, ""); else core.AssignHotbar(slot, "", snapshot.Revision); AcceptEvent(); }
-        else if (mouse.ButtonIndex == MouseButton.Left && item != null)
-        { if (demo) DemoInventory.Equip(item.Id); else core.ActivateHotbar(slot, snapshot.Revision); AcceptEvent(); }
+        if(Reserved)return;
+        if(input.IsActionPressed("ui_accept")){Activate();AcceptEvent();return;}
+        if(input is not InputEventMouseButton {Pressed:true} mouse)return;
+        if(mouse.ButtonIndex==MouseButton.Right){if(Quick)bindQuick("");else if(demo)DemoInventory.Assign(slot,"");else core.AssignHotbar(slot,"",snapshot.Revision);AcceptEvent();}
+        else if(mouse.ButtonIndex==MouseButton.Left){Activate();AcceptEvent();}
     }
+    private void Activate(){if(!core.InventoryPending)inspect();}
     public override void _Draw()
     {
-        var p = SiderealPalette.Current; var font = GetThemeFont("font", "Label");
-        var color = item != null ? p.Rarity(item.Definition?.Rarity ?? "common") : p.Accent;
-        var selected = item?.EquipmentSlot.Length > 0;
-        SciFiFrameStyle.Paint(GetCanvasItem(), new Rect2(Vector2.Zero, Size), new Color(hover ? p.Surface.Lightened(.1f) : p.Surface, p.Opacity),
-            color with { A = hover || selected ? 1 : .58f }, selected ? p.Accent : color, 8, selected, hover || selected ? 1.7f : 1);
-        DrawRect(new Rect2(6, 4, 18, 18), p.Surface.Lightened(.12f));
-        DrawString(font, new Vector2(10, 18), (slot + 1).ToString(), HorizontalAlignment.Left, -1, 13, p.Text);
-        var icon = item?.Definition?.Category switch { "weapon" => "╱", "medical" => "+", "tool" => "◇", _ => "□" };
-        if (InventoryIcons.Texture(item?.Definition) is { } texture) DrawTextureRect(texture, InventoryIcons.Fit(texture, new Rect2(14, 12, Size.X - 28, Math.Max(24, Size.Y - 31))), false);
-        else DrawString(font, new Vector2(Size.X * .42f, 40), item != null ? icon : "—", HorizontalAlignment.Left, -1, 23, color);
-        DrawString(font, new Vector2(6, Size.Y - 7), InventoryGrid.Fit(font, item?.Name ?? "Assign", Size.X - 12, 12), HorizontalAlignment.Left, Size.X - 12, 12, item != null ? p.Text : p.Muted);
-        if (!demo && core.InventoryPending) DrawRect(new Rect2(Vector2.Zero, Size), p.Surface with { A = .4f });
+        var p=SiderealPalette.Current;var font=GetThemeFont("font","Label");var selected=item?.EquipmentSlot.Length>0;
+        ItemFrameStyle.Paint(this,new Rect2(Vector2.Zero,Size),ItemPresentation.Rarity(item?.Definition),selected,hover,HasFocus(),Reserved||(!demo&&core.InventoryPending),item==null);
+        DrawString(font,new Vector2(6,14),Quick?(slot==8?"9":"0"):(slot+1).ToString(),HorizontalAlignment.Left,-1,10,Reserved?p.Muted:p.Text);
+        if(InventoryIcons.Texture(item?.Definition) is {} texture)DrawTextureRect(texture,InventoryIcons.Fit(texture,new Rect2(6,10,Size.X-12,Math.Max(18,Size.Y-18))),false);
+        else if(!Reserved&&!Quick)
+        {
+            var glyph=slot switch{0=>"»",1=>"⊕",2=>"◇",3=>"◎",_=>"+"};DrawString(font,new Vector2(Size.X*.32f,Size.Y*.62f),glyph,HorizontalAlignment.Left,-1,20,p.Accent with {A=.7f});
+            if(Size.X>=40)DrawString(font,new Vector2(5,Size.Y-6),"ASSIGN",HorizontalAlignment.Left,Size.X-10,8,p.Muted);
+        }
     }
 }

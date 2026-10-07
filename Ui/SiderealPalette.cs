@@ -7,23 +7,27 @@ namespace Sidereal.Ui;
 [GlobalClass]
 public partial class SiderealPalette : Resource
 {
-    [Export] public Color Surface { get; set; } = new("081629");
-    [Export] public Color Accent { get; set; } = new("43dcff");
-    [Export] public Color Text { get; set; } = new("edf5ff");
-    [Export] public Color Muted { get; set; } = new("b7cadc");
-    [Export] public Color Danger { get; set; } = new("ff637b");
-    [Export] public Color Success { get; set; } = new("6de1af");
-    [Export] public Color Warning { get; set; } = new("ffc765");
-    [Export] public Color Rare { get; set; } = new("57a8ff");
-    [Export] public Color Epic { get; set; } = new("d771ff");
-    [Export(PropertyHint.Range, "0.35,1,0.01")] public float Opacity { get; set; } = 0.96f;
+    [Export] public Color Surface { get; set; } = new("051736");
+    [Export] public Color Accent { get; set; } = new("47dfff");
+    [Export] public Color Text { get; set; } = new("eff6ff");
+    [Export] public Color Muted { get; set; } = new("a7c5e8");
+    [Export] public Color Danger { get; set; } = new("ff8eaa");
+    [Export] public Color Success { get; set; } = new("74dcbb");
+    [Export] public Color Warning { get; set; } = new("ffd26d");
+    [Export] public Color Common { get; set; } = new("9db5d0");
+    [Export] public Color Uncommon { get; set; } = new("33e894");
+    [Export] public Color Rare { get; set; } = new("27cfff");
+    [Export] public Color Epic { get; set; } = new("c065ff");
+    [Export] public Color Legendary { get; set; } = new("ffcc42");
+    [Export(PropertyHint.Range, "0.3,1,0.01")] public float Opacity { get; set; } = 0.94f;
     [Export(PropertyHint.Range, "0.75,1.5,0.05")] public float UiScale { get; set; } = 1;
 
     public static SiderealPalette Current { get; private set; } = null!;
+    public string? PersistenceError { get; private set; }
     public Color Rarity(string value) => value.ToLowerInvariant() switch {
-        "uncommon" => Success, "rare" => Rare,
-        "epic" => Epic, "legendary" => Warning,
-        _ => Muted
+        "uncommon" => Uncommon, "rare" => Rare,
+        "epic" => Epic, "legendary" => Legendary,
+        _ => Common
     };
     public static SiderealPalette Activate(SiderealPalette palette) => Current = palette;
 
@@ -42,8 +46,11 @@ public partial class SiderealPalette : Resource
             Current.Warning = ReadColor(profile, "warning", Current.Warning);
             Current.Rare = ReadColor(profile, "rare", Current.Rare);
             Current.Epic = ReadColor(profile, "epic", Current.Epic);
-            Current.Opacity = Mathf.Clamp((float)profile.GetValue("theme", "opacity", Current.Opacity).AsDouble(), 0.35f, 1);
-            Current.UiScale = Mathf.Clamp((float)profile.GetValue("theme", "scale", Current.UiScale).AsDouble(), 0.75f, 1.5f);
+            Current.Common = ReadColor(profile, "common", Current.Common);
+            Current.Uncommon = ReadColor(profile, "uncommon", Current.Uncommon);
+            Current.Legendary = ReadColor(profile, "legendary", Current.Legendary);
+            Current.Opacity = ReadRange(profile,"opacity",Current.Opacity,.3f,1);
+            Current.UiScale = ReadRange(profile,"scale",Current.UiScale,.75f,1.5f);
         }
         return Current;
     }
@@ -51,7 +58,13 @@ public partial class SiderealPalette : Resource
     private static Color ReadColor(ConfigFile file, string key, Color fallback)
     {
         var value = file.GetValue("theme", key, fallback);
-        return value.VariantType == Variant.Type.Color ? value.AsColor() : fallback;
+        if(value.VariantType!=Variant.Type.Color)return fallback;var color=value.AsColor();
+        return float.IsFinite(color.R)&&float.IsFinite(color.G)&&float.IsFinite(color.B)&&float.IsFinite(color.A)?color:fallback;
+    }
+    private static float ReadRange(ConfigFile file,string key,float fallback,float minimum,float maximum)
+    {
+        var value=file.GetValue("theme",key,fallback);if(value.VariantType is not (Variant.Type.Int or Variant.Type.Float))return fallback;
+        var number=value.AsDouble();return double.IsFinite(number)?(float)Math.Clamp(number,minimum,maximum):fallback;
     }
 
     public void ApplyAndSave()
@@ -62,8 +75,9 @@ public partial class SiderealPalette : Resource
         file.SetValue("theme", "text", Text); file.SetValue("theme", "muted", Muted);
         file.SetValue("theme", "danger", Danger); file.SetValue("theme", "success", Success);
         file.SetValue("theme", "warning", Warning); file.SetValue("theme", "rare", Rare); file.SetValue("theme", "epic", Epic);
+        file.SetValue("theme", "common", Common); file.SetValue("theme", "uncommon", Uncommon); file.SetValue("theme", "legendary", Legendary);
         file.SetValue("theme", "opacity", Opacity); file.SetValue("theme", "scale", UiScale);
-        file.Save("user://ui-theme.cfg");
+        PersistenceError=file.Save("user://ui-theme.cfg")==Error.Ok?null:"Theme changes apply for this session but could not be saved.";
     }
 
     public Theme CreateTheme()
@@ -71,14 +85,23 @@ public partial class SiderealPalette : Resource
         var theme = new Theme { DefaultFontSize = 17, DefaultFont = ResourceLoader.Load<Font>("res://Ui/Fonts/Barlow-Regular.ttf") };
         var heading = ResourceLoader.Load<Font>("res://Ui/Fonts/BarlowCondensed-SemiBold.ttf");
         theme.SetTypeVariation("Heading", "Label");
+        theme.SetTypeVariation("AccentHeading", "Heading");
+        theme.SetTypeVariation("AccentLabel", "Label");
+        theme.SetTypeVariation("MutedLabel", "Label");
+        theme.SetTypeVariation("WarningLabel", "Label");
+        theme.SetTypeVariation("DangerHeading", "Heading");
         theme.SetTypeVariation("FramePanel", "PanelContainer");
         theme.SetTypeVariation("CompactFramePanel", "PanelContainer");
+        theme.SetTypeVariation("ActionBarPanel", "PanelContainer");
         theme.SetTypeVariation("QuietPanel", "PanelContainer");
         theme.SetTypeVariation("TooltipPanel", "PanelContainer");
         theme.SetTypeVariation("TooltipLabel", "Label");
         theme.SetFont("font", "Heading", heading); theme.SetFontSize("font_size", "Heading", 27);
         theme.SetTypeVariation("AccentButton", "Button");
         theme.SetTypeVariation("GhostButton", "Button");
+        theme.SetTypeVariation("SelectedMenuTab", "Button");
+        theme.SetTypeVariation("CompactOption", "OptionButton");
+        theme.SetTypeVariation("CompactInput", "LineEdit");
         foreach (var type in new[] { "Label", "Button", "LineEdit", "OptionButton", "CheckButton", "CheckBox", "TooltipLabel", "RichTextLabel" })
         {
             theme.SetColor("font_color", type, Text);
@@ -88,11 +111,17 @@ public partial class SiderealPalette : Resource
             theme.SetColor("font_focus_color", type, Colors.White);
         }
         theme.SetColor("font_placeholder_color", "LineEdit", Muted);
+        theme.SetColor("font_color", "AccentHeading", Accent);
+        theme.SetColor("font_color", "AccentLabel", Accent);
+        theme.SetColor("font_color", "MutedLabel", Muted);
+        theme.SetColor("font_color", "WarningLabel", Warning);
+        theme.SetColor("font_color", "DangerHeading", Danger);
         theme.SetColor("caret_color", "LineEdit", Accent);
         theme.SetColor("selection_color", "LineEdit", new Color(Accent, 0.3f));
         theme.SetStylebox("panel", "PanelContainer", Frame(Surface, new Color("294c68"), 14, 9, false));
         theme.SetStylebox("panel", "FramePanel", Frame(Surface, Accent.Darkened(.45f), 16, 12, true));
         theme.SetStylebox("panel", "CompactFramePanel", Frame(Surface, Accent.Darkened(.45f), 8, 10, true));
+        theme.SetStylebox("panel", "ActionBarPanel", new StyleBoxEmpty());
         theme.SetStylebox("panel", "QuietPanel", Frame(Surface, Accent.Darkened(.65f), 10, 7, false));
         theme.SetStylebox("panel", "TooltipPanel", Frame(Surface.Lightened(0.04f), Accent, 14, 10, true));
         theme.SetFontSize("font_size", "TooltipLabel", 16);
@@ -109,9 +138,16 @@ public partial class SiderealPalette : Resource
         theme.SetStylebox("normal", "AccentButton", Frame(Surface.Lightened(0.08f), Accent, 16, 10, true));
         theme.SetColor("font_color", "AccentButton", Text);
         theme.SetStylebox("normal", "GhostButton", Frame(new Color(Surface, .65f), Accent.Darkened(.65f), 12, 6, false));
+        theme.SetFont("font", "SelectedMenuTab", heading);theme.SetFontSize("font_size", "SelectedMenuTab",17);
+        theme.SetStylebox("normal", "SelectedMenuTab", Frame(Surface.Lightened(.08f), Accent, 12, 7, true));
         theme.SetStylebox("normal", "LineEdit", Frame(Surface.Darkened(0.2f), Muted.Darkened(0.55f), 10, 6, false));
         theme.SetStylebox("focus", "LineEdit", Frame(Surface.Darkened(0.1f), Accent, 10, 6, false));
         theme.SetStylebox("read_only", "LineEdit", Frame(Surface, Muted.Darkened(0.7f), 10, 6, false));
+        theme.SetStylebox("normal", "CompactOption", Frame(Surface.Lightened(.02f), Accent.Darkened(.52f), 6, 6, false));
+        theme.SetStylebox("hover", "CompactOption", Frame(Surface.Lightened(.09f), Accent, 6, 6, false));
+        theme.SetStylebox("pressed", "CompactOption", Frame(Surface.Lightened(.16f), Accent, 6, 6, true));
+        theme.SetStylebox("normal", "CompactInput", Frame(Surface.Darkened(.2f), Muted.Darkened(.55f), 6, 6, false));
+        theme.SetStylebox("focus", "CompactInput", Frame(Surface.Darkened(.1f), Accent, 6, 6, false));
         theme.SetStylebox("background", "ProgressBar", Box(Surface.Darkened(0.2f), Accent.Darkened(0.6f), 0));
         theme.SetStylebox("fill", "ProgressBar", Box(Accent, Accent, 0));
         theme.SetStylebox("slider", "HSlider", Box(Surface.Darkened(0.25f), Accent.Darkened(0.6f), 0));
@@ -128,9 +164,10 @@ public partial class SiderealPalette : Resource
             theme.SetStylebox("grabber_highlight", scroll, Box(Accent.Darkened(0.2f), Accent, 0));
             theme.SetStylebox("grabber_pressed", scroll, Box(Accent, Accent, 0));
         }
-        theme.SetStylebox("panel", "PopupMenu", Box(Surface, Accent.Darkened(0.4f), 8));
+        theme.SetStylebox("panel", "PopupMenu", Frame(Surface, Accent.Darkened(0.4f), 8, 7, false));
         theme.SetStylebox("hover", "PopupMenu", Box(Surface.Lightened(0.15f), Accent.Darkened(0.3f), 5));
         theme.SetColor("font_color", "PopupMenu", Text); theme.SetColor("font_hover_color", "PopupMenu", Colors.White);
+        theme.SetColor("font_disabled_color", "PopupMenu", Muted.Darkened(.35f));
         theme.SetStylebox("separator", "HSeparator", new StyleBoxLine { Color = Accent.Darkened(0.65f), Thickness = 1, GrowBegin = 0, GrowEnd = 0 });
         theme.SetConstant("separation", "VBoxContainer", 10);
         theme.SetConstant("separation", "HBoxContainer", 10);

@@ -13,13 +13,14 @@ public sealed record ItemDefinition(string Id, string Name, int Width, int Heigh
 }
 
 public sealed record InventoryItemView(string Id, string DefinitionId, string ContainerId, string EquipmentSlot,
-    int X, int Y, bool Rotated, ItemDefinition? Definition)
+    int X, int Y, bool Rotated, ItemDefinition? Definition, ulong? ScopedRevision = null)
 {
     public string Name => Definition?.Name ?? DefinitionId;
 }
 
 public sealed record InventoryContainerView(string Id, string ParentItemId, string Kind, string Name,
-    int Width, int Height, double MaxMassKg, double CapacityLitres, double AmountLitres, string LiquidType, bool Carried);
+    int Width, int Height, double MaxMassKg, double CapacityLitres, double AmountLitres, string LiquidType, bool Carried,
+    string PlacementId = "", ulong? ScopedRevision = null, bool IsScopedCargo = false);
 
 public sealed record InventorySnapshot(ulong Revision, bool Available, double CarriedMassKg, double CarryLimitKg,
     string PocketsId, IReadOnlyList<InventoryItemView> Items, IReadOnlyList<InventoryContainerView> Containers,
@@ -29,6 +30,21 @@ public sealed record InventorySnapshot(ulong Revision, bool Available, double Ca
     public static readonly InventorySnapshot Empty = new(0, false, 0, 0, "", Array.Empty<InventoryItemView>(), Array.Empty<InventoryContainerView>(), new Dictionary<byte, string>());
     public InventoryItemView? Item(string id) => Items.FirstOrDefault(i => i.Id == id);
     public InventoryContainerView? Container(string id) => Containers.FirstOrDefault(c => c.Id == id);
+    public bool UsesScopedCargo(string itemId, string destinationId) =>
+        Item(itemId) is { ContainerId.Length: > 0 } item && Container(item.ContainerId)?.IsScopedCargo == true ||
+        Container(destinationId)?.IsScopedCargo == true;
+
+    public (int X, int Y, bool Rotated)? FirstPlacement(string itemId, string containerId)
+    {
+        var item = Item(itemId);
+        var container = Container(containerId);
+        if (item?.Definition == null || container is not { Kind: "grid" }) return null;
+        foreach (var rotated in new[] { item.Rotated, !item.Rotated }.Distinct())
+        for (var y = 0; y < container.Height; y++)
+        for (var x = 0; x < container.Width; x++)
+            if (Fits(itemId, containerId, x, y, rotated)) return (x, y, rotated);
+        return null;
+    }
 
     // Spatial preview only. Access, mass, nesting, equipment swaps and revisions stay on the server.
     public bool Fits(string itemId, string containerId, int x, int y, bool rotated)
@@ -120,11 +136,18 @@ public static class InventoryCatalog
         if (state == null) return InventorySnapshot.Empty;
         var definitions = connection.Db.PublishedItemDefinitions.Iter().ToArray();
         var pins = connection.Db.OwnItemDefinitionPins.Iter().ToDictionary(p => p.ItemId);
+        var carriedRevisions = connection.Db.OwnCarriedInventoryRevisions.Iter().ToArray();
+        ulong? CarriedRevision(string kind, string id) => carriedRevisions.FirstOrDefault(r => r.Kind == kind && r.Id == id)?.Revision;
         var items = connection.Db.OwnInventoryItems.Iter().Select(i => {
             var revision = pins.TryGetValue(i.Id, out var pin) && pin.DefinitionId == i.DefinitionId ? pin.ItemRevision : 1;
-            return new InventoryItemView(i.Id, i.DefinitionId, i.ContainerId, i.EquipmentSlot, i.X, i.Y, i.Rotated, Resolve(i.DefinitionId, revision, definitions));
-        }).ToArray();
-        var containers = connection.Db.OwnInventoryContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, c.Carried)).ToArray();
+            return new InventoryItemView(i.Id, i.DefinitionId, i.ContainerId, i.EquipmentSlot, i.X, i.Y, i.Rotated, Resolve(i.DefinitionId, revision, definitions), CarriedRevision("item", i.Id));
+        }).Concat(connection.Db.OwnReachableCargoItems.Iter().Select(i => {
+            var revision = pins.TryGetValue(i.Id, out var pin) && pin.DefinitionId == i.DefinitionId ? pin.ItemRevision : 1;
+            return new InventoryItemView(i.Id, i.DefinitionId, i.ContainerId, "", i.X, i.Y, i.Rotated, Resolve(i.DefinitionId, revision, definitions), i.Revision);
+        })).DistinctBy(i => i.Id).ToArray();
+        var containers = connection.Db.OwnInventoryContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, c.Carried, "", CarriedRevision("container", c.Id)))
+            .Concat(connection.Db.OwnReachableCargoContainers.Iter().Select(c => new InventoryContainerView(c.Id, c.ParentItemId, c.Kind, c.Name, checked((int)c.Width), checked((int)c.Height), c.MaxMassKg, c.CapacityLitres, c.AmountLitres, c.LiquidType, false, c.PlacedObjectId, c.Revision, true)))
+            .DistinctBy(c => c.Id).ToArray();
         return new(state.Revision, true, state.CarriedMassKg, state.CarryLimitKg, state.PocketsId, items, containers,
             connection.Db.OwnInventoryHotbar.Iter().ToDictionary(h => h.Slot, h => h.ItemId));
     }

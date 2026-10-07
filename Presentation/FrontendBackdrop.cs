@@ -1,6 +1,9 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using Sidereal.Native;
 
 /// <summary>
 /// Local entry presentation. The dock reuses published metre-scale modules; the
@@ -18,6 +21,8 @@ public partial class FrontendBackdrop : Node3D
     private readonly Dictionary<string, PackedScene> scenes = new();
     private Camera3D camera = null!;
     private bool active = true;
+    private NativePreferencesSnapshot? preferences;
+    private readonly Dictionary<Light3D, (float Energy, bool Shadows)> lightDefaults = new();
 
     public override void _Ready()
     {
@@ -25,6 +30,7 @@ public partial class FrontendBackdrop : Node3D
         BuildConcourse();
         BuildDockedAssembly();
         BuildCargo();
+        BuildOuterBerth();
         BuildLighting();
         // The existing sky plate is only the distant view through the aperture.
         // Every nearby deck, wall, beam, ship fitting and cargo object is 3D geometry.
@@ -44,7 +50,7 @@ public partial class FrontendBackdrop : Node3D
         camera = new Camera3D
         {
             Name = "PresentationCamera", Position = PresentationCameraPosition,
-            Fov = PresentationFieldOfView, Near = 0.1f, Far = 200,
+            Fov = PresentationFieldOfView, Near = 0.1f, Far = 450,
             CullMask = PresentationLayer, Environment = CreateEnvironment(),
         };
         AddChild(camera);
@@ -58,6 +64,32 @@ public partial class FrontendBackdrop : Node3D
         active = visible;
         Visible = visible;
         if (camera != null) camera.Current = visible;
+    }
+
+    public void ApplyPreferences(NativePreferencesSnapshot next)
+    {
+        if (preferences == next) return;
+        preferences = next;
+        void Visit(Node node)
+        {
+            if (node is Light3D light)
+            {
+                if (!lightDefaults.ContainsKey(light)) lightDefaults.Add(light, (light.LightEnergy, light.ShadowEnabled));
+                var original = lightDefaults[light];
+                light.LightEnergy = next.Lighting ? original.Energy : 0;
+                light.ShadowEnabled = next.Lighting && next.Shadows && original.Shadows;
+            }
+            foreach (var child in node.GetChildren()) Visit(child);
+        }
+        Visit(this);
+        var limit = next.LocalLightLimit == "all" ? int.MaxValue : int.Parse(next.LocalLightLimit);
+        var locals = lightDefaults.Keys.Where(light => light is OmniLight3D or SpotLight3D)
+            .OrderBy(light => light.GlobalPosition.DistanceSquaredTo(PresentationCameraTarget)).ToArray();
+        for (var i = 0; i < locals.Length; i++)
+            locals[i].LightEnergy = next.Lighting && i < limit ? lightDefaults[locals[i]].Energy : 0;
+        camera.Environment!.AmbientLightEnergy = next.Lighting ? .18f : 1;
+        camera.Environment.GlowEnabled = next.Glow;
+        camera.Environment.GlowIntensity = .28f;
     }
 
     private Godot.Environment CreateEnvironment() => new()
@@ -105,8 +137,11 @@ public partial class FrontendBackdrop : Node3D
         var lamps = new List<Transform3D>();
         for (var z = -40; z < 14; z++)
         {
-            panels.Add(At(-26, 0, z, Mathf.Pi / 2));
-            braces.Add(At(26, 0, z - 1, -Mathf.Pi / 2));
+            for (var storey = 0; storey < 4; storey++)
+            {
+                panels.Add(At(-26, storey * 2.125f, z, Mathf.Pi / 2));
+                braces.Add(At(26, storey * 2.125f, z - 1, -Mathf.Pi / 2));
+            }
             if (z % 4 == 0)
             {
                 lamps.Add(At(-25.7f, 1.7f, z - 0.31f, Mathf.Pi / 2));
@@ -136,6 +171,41 @@ public partial class FrontendBackdrop : Node3D
         AddBatch("int.post.glb", posts);
         AddBatch("int.post.glb", overhead);
         AddBatch("int.fixture.wall-lamp.glb", lamps);
+    }
+
+    private void BuildOuterBerth()
+    {
+        // This is an offline entry composition, not a body disclosed from an account.
+        // Reuse the exact reviewed canonical planet derivative and weather at unit
+        // radius, with the same authored surfaces as the connected renderer.
+        var ocean = SpaceEnvironment.Catalog.GetProperty("bodies").EnumerateArray()
+            .FirstOrDefault(body => body.GetProperty("style").GetString() == "ocean");
+        if (ocean.ValueKind == JsonValueKind.Object)
+        {
+            var level = ocean.GetProperty("levels").EnumerateArray().OrderBy(entry => entry.GetProperty("lod").GetInt32()).Last();
+            var planet = new Node3D { Name = "ReviewedOceanEntryPreview", Position = new Vector3(-30, 8, -105), Scale = Vector3.One * 29 };
+            AddChild(planet);
+            foreach (var role in new[] { "surface", "weather" })
+            {
+                if (!level.TryGetProperty(role, out var data) || data.ValueKind != JsonValueKind.Object) continue;
+                var file = data.GetProperty("file").GetString()!;
+                var model = GD.Load<PackedScene>(SpaceEnvironment.AssetRoot + file).Instantiate<Node3D>();
+                ApplyLayers(model); planet.AddChild(model);
+            }
+        }
+        var parked = ReplicatedWorld.CreatePreviewAssembly(PresentationLayer, false, "fed.s.wren");
+        parked.Name = "PublishedWrenOuterBerthPreview";
+        parked.Position = new Vector3(-13, .3875f - parked.Bounds.Position.Y, -32);
+        parked.Rotation = new Vector3(0, Mathf.Pi, 0);
+        AddChild(parked);
+        // A second bank of original storage modules adds service-area depth without
+        // scaling kit pieces or inventing another ship/model source.
+        foreach (var z in new[] { -35f, -30f, -25f })
+        {
+            AddAsset("cargo.standard.medium.glb", At(-22, .1875f, z));
+            AddAsset("cargo.standard.medium.glb", At(-22, 2.3125f, z));
+            AddAsset("shipyard.equipment.wall-locker.glb", At(-24.5f, .1875f, z, Mathf.Pi / 2));
+        }
     }
 
     private void BuildDockedAssembly()

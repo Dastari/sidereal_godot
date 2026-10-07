@@ -13,7 +13,18 @@ internal sealed class ItemDrag
     public required InventoryItemView Item;
     public required ulong Revision;
     public bool Rotated, Demo;
+    public Vector2 GrabFraction;
     public InventoryDragPreview? Preview;
+    private static Vector2? quietPointer;
+    public static void Released(Control owner) { quietPointer=owner.GetGlobalMousePosition();Current=null; }
+    public static bool TooltipsAllowed(Control owner,ClientCore core)
+    {
+        if(Current!=null||core.InventoryPending)return false;
+        if(!owner.IsInsideTree())return true;
+        if(owner.GetViewport().GuiIsDragging())return false;
+        if(quietPointer is {} point){if(point.DistanceTo(owner.GetGlobalMousePosition())<=3)return false;quietPointer=null;}
+        return true;
+    }
     public static bool Payload(Variant data) => data.VariantType == Variant.Type.Dictionary && data.AsGodotDictionary().ContainsKey("sidereal-item");
     public static string Tooltip(InventoryItemView item) => item.Definition is { } d
         ? $"{d.Name}\n{d.Role}\n{d.Width} × {d.Height} cells · {d.MassKg:0.##} kg dry mass\nDefinition revision {d.Revision}" + (d.EquipSlot.Length > 0 ? $"\nEquipment slot: {d.EquipSlot}" : "")
@@ -27,14 +38,14 @@ internal partial class InventoryDragPreview : Control
     public void UpdateSize()
     {
         var (w, h) = drag.Item.Definition!.Footprint(drag.Rotated);
-        Size = CustomMinimumSize = new Vector2(w * 40, h * 40);
+        Size = CustomMinimumSize = new Vector2(w * 48-4, h * 48-4);
+        Position=-Size*drag.GrabFraction;
         QueueRedraw();
     }
     public override void _Draw()
     {
         var p = SiderealPalette.Current;
-        DrawRect(new Rect2(Vector2.Zero, Size), p.Surface with { A = .95f });
-        DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2), p.Rarity(drag.Item.Definition!.Rarity), false, 2);
+        ItemFrameStyle.Paint(this,new Rect2(Vector2.Zero,Size),ItemPresentation.Rarity(drag.Item.Definition),true);
         DrawString(GetThemeFont("font", "Label"), new Vector2(8, 25), "R · rotate", HorizontalAlignment.Left, Size.X - 16, 13, p.Text);
         if (InventoryIcons.Texture(drag.Item.Definition) is { } texture)
         {
@@ -55,9 +66,18 @@ public partial class InventoryGrid : Control
     private InventorySnapshot snapshot;
     private InventoryContainerView container;
     private string hovered = "";
+    public string SelectedId { get; set; } = "";
+    public bool ListMode { get; set; }
+    public int Sort { get; set; }
+    public Func<InventoryItemView,bool>? Filter { get; set; }
+    public event Action<string>? SelectionChanged;
+    public event Action<string,Vector2>? ContextRequested;
+    private InventoryItemView[] VisibleItems => snapshot.Items.Where(i=>i.ContainerId==container.Id&&(Filter?.Invoke(i)??true))
+        .OrderBy(i=>Sort==1?RarityOrder(ItemPresentation.Rarity(i.Definition)):0).ThenBy(i=>Sort==2?ItemPresentation.Category(i,snapshot):"").ThenBy(i=>i.Name).ToArray();
+    private static int RarityOrder(string rarity)=>rarity switch {"legendary"=>0,"epic"=>1,"rare"=>2,"uncommon"=>3,_=>4};
     private bool previewFits;
     private Vector2I previewCell;
-    private float Cell => Math.Clamp(Size.X / Math.Max(container.Width, 1), 32, 64);
+    private const float Cell = 48;
 
     public InventoryGrid(ClientCore core, bool demo, InventorySnapshot snapshot, InventoryContainerView container)
     {
@@ -65,7 +85,7 @@ public partial class InventoryGrid : Control
         MouseFilter = MouseFilterEnum.Stop;
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         FocusMode = FocusModeEnum.All;
-        CustomMinimumSize = new Vector2(container.Width * 36, container.Height * 42);
+        CustomMinimumSize = new Vector2(container.Width * Cell, container.Height * Cell);
         MouseExited += () => { hovered = ""; TooltipText = ""; QueueRedraw(); };
         Resized += UpdateHitBounds;
     }
@@ -80,11 +100,11 @@ public partial class InventoryGrid : Control
 
     private void UpdateHitBounds()
     {
-        // The drawn pitch follows expanded width. Its full last row must also be inside
-        // the Control's hit rectangle, including short four-column pockets.
-        var height = container.Height * Cell;
-        if (!Mathf.IsEqualApprox(CustomMinimumSize.Y, height))
-            CustomMinimumSize = new Vector2(container.Width * 36, height);
+        // Logical 48-LU cells match the browser. Narrow frames scroll rather than
+        // shrinking footprints or silently changing hit geometry.
+        var height = ListMode ? Math.Max(64, VisibleItems.Length * 64) : container.Height * Cell;
+        if (!Mathf.IsEqualApprox(CustomMinimumSize.Y, height) || !Mathf.IsEqualApprox(CustomMinimumSize.X, ListMode ? 200 : container.Width * Cell))
+            CustomMinimumSize = new Vector2(ListMode ? 200 : container.Width * Cell, height);
         QueueRedraw();
     }
 
@@ -100,10 +120,11 @@ public partial class InventoryGrid : Control
     {
         var mouse = GetLocalMousePosition();
         var item = Hit(mouse);
-        if (hovered != (item?.Id ?? "")) { hovered = item?.Id ?? ""; TooltipText = item == null ? "Drag an item here. R rotates while dragging." : ItemDrag.Tooltip(item); QueueRedraw(); }
+        if (hovered != (item?.Id ?? "")) { hovered = item?.Id ?? ""; QueueRedraw(); }
+        TooltipText=ItemDrag.TooltipsAllowed(this,core)?item==null?"Drag an item here. R rotates while dragging.":ItemPresentation.Tooltip(core,item):"";
         if (ItemDrag.Current is { } drag && GetRect().HasPoint(Position + mouse))
         {
-            var cell = CellAt(mouse);
+            var cell = LandingCell(mouse,drag);
             var fits = snapshot.Fits(drag.Item.Id, container.Id, cell.X, cell.Y, drag.Rotated) && !core.InventoryPending;
             if (cell != previewCell || fits != previewFits) { previewCell = cell; previewFits = fits; QueueRedraw(); }
         }
@@ -111,9 +132,10 @@ public partial class InventoryGrid : Control
 
     public override void _Input(InputEvent input)
     {
-        if (ItemDrag.Current is { } drag && drag.Core == core && input is InputEventKey { Pressed: true, Echo: false, Keycode: Key.R })
+        if (ItemDrag.Current is { } drag && drag.Core == core && input is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.R })
         {
             drag.Rotated = !drag.Rotated;
+            drag.GrabFraction=new Vector2(drag.GrabFraction.Y,drag.GrabFraction.X);
             drag.Preview?.UpdateSize();
             GetViewport().SetInputAsHandled();
             QueueRedraw();
@@ -121,14 +143,22 @@ public partial class InventoryGrid : Control
     }
 
     public override void _Notification(int what)
-    { if (what == NotificationDragEnd) { ItemDrag.Current = null; QueueRedraw(); } }
+    { if (what == NotificationDragEnd) { ItemDrag.Released(this); QueueRedraw(); } }
 
     private Vector2I CellAt(Vector2 position) => new((int)Math.Floor(position.X / Cell), (int)Math.Floor(position.Y / Cell));
+    private Vector2I LandingCell(Vector2 position,ItemDrag drag)
+    {
+        var (w,h)=drag.Item.Definition!.Footprint(drag.Rotated);
+        var corner=position-drag.GrabFraction*new Vector2(w*Cell-4,h*Cell-4)-Vector2.One*2;
+        return new Vector2I(Math.Clamp((int)Math.Floor(corner.X/Cell+.5),0,Math.Max(0,container.Width-w)),
+            Math.Clamp((int)Math.Floor(corner.Y/Cell+.5),0,Math.Max(0,container.Height-h)));
+    }
     private InventoryItemView? Hit(Vector2 position)
     {
+        if(ListMode) {var index=(int)Math.Floor(position.Y/64);return index>=0&&index<VisibleItems.Length?VisibleItems[index]:null;}
         var cell = CellAt(position);
         return snapshot.Items.FirstOrDefault(i => {
-            if (i.ContainerId != container.Id) return false;
+            if (i.ContainerId != container.Id || !(Filter?.Invoke(i) ?? true)) return false;
             var (w, h) = i.Definition?.Footprint(i.Rotated) ?? (1, 1);
             return cell.X >= i.X && cell.X < i.X + w && cell.Y >= i.Y && cell.Y < i.Y + h;
         });
@@ -136,14 +166,18 @@ public partial class InventoryGrid : Control
     public override GodotObject _MakeCustomTooltip(string forText)
     {
         var item = snapshot.Item(hovered);
-        return item == null ? UiKit.Tooltip("Inventory grid", forText) : UiKit.Tooltip(item.Name, ItemDrag.Tooltip(item).Split('\n', 2).ElementAtOrDefault(1) ?? "");
+        return item == null ? UiKit.Tooltip("Inventory grid", forText) : UiKit.Tooltip(item.Name, ItemPresentation.Tooltip(core,item).Split('\n', 2).ElementAtOrDefault(1) ?? "",ItemPresentation.Rarity(item.Definition));
     }
 
     public override Variant _GetDragData(Vector2 atPosition)
     {
         var item = Hit(atPosition);
         if (item?.Definition == null || core.InventoryPending) return default;
-        var drag = new ItemDrag { Core = core, Item = item, Revision = snapshot.Revision, Rotated = item.Rotated, Demo = demo };
+        var (w,h)=item.Definition.Footprint(item.Rotated);
+        var corner=new Vector2(item.X*Cell+2,item.Y*Cell+2);
+        var offset=(atPosition-corner)/new Vector2(w*Cell-4,h*Cell-4);
+        var drag = new ItemDrag { Core = core, Item = item, Revision = snapshot.Revision, Rotated = item.Rotated, Demo = demo,
+            GrabFraction=ListMode?new Vector2(.5f,.5f):new Vector2(Mathf.Clamp(offset.X,0,1),Mathf.Clamp(offset.Y,0,1)) };
         ItemDrag.Current = drag;
         drag.Preview = new InventoryDragPreview(drag);
         SetDragPreview(drag.Preview);
@@ -154,7 +188,8 @@ public partial class InventoryGrid : Control
     public override bool _CanDropData(Vector2 atPosition, Variant data)
     {
         if (!ItemDrag.Payload(data) || ItemDrag.Current is not { } drag || drag.Core != core || drag.Demo != demo || core.InventoryPending) return false;
-        previewCell = CellAt(atPosition);
+        if(ListMode) {previewFits=snapshot.FirstPlacement(drag.Item.Id,container.Id)!=null;return previewFits;}
+        previewCell = LandingCell(atPosition,drag);
         previewFits = snapshot.Fits(drag.Item.Id, container.Id, previewCell.X, previewCell.Y, drag.Rotated);
         QueueRedraw();
         return previewFits;
@@ -163,14 +198,32 @@ public partial class InventoryGrid : Control
     public override void _DropData(Vector2 atPosition, Variant data)
     {
         if (!_CanDropData(atPosition, data) || ItemDrag.Current is not { } drag) return;
+        if(ListMode){if(demo){if(snapshot.FirstPlacement(drag.Item.Id,container.Id) is {} place)DemoInventory.Move(drag.Item.Id,container.Id,place.X,place.Y,place.Rotated);}else core.TransferItem(drag.Item.Id,container.Id,snapshot.Revision);return;}
         if (demo) { DemoInventory.Move(drag.Item.Id, container.Id, previewCell.X, previewCell.Y, drag.Rotated); return; }
         core.MoveItem(drag.Item.Id, container.Id, previewCell.X, previewCell.Y, drag.Rotated, drag.Revision);
     }
 
+    public void PickUpAndRotate(string itemId)
+    {
+        var item=snapshot.Item(itemId);if(item?.Definition==null||core.InventoryPending)return;
+        var drag=new ItemDrag {Core=core,Item=item,Revision=snapshot.Revision,Rotated=!item.Rotated,Demo=demo};ItemDrag.Current=drag;
+        drag.Preview=new InventoryDragPreview(drag);ForceDrag(new Godot.Collections.Dictionary {["sidereal-item"]=item.Id},drag.Preview);core.ReleaseControls();
+    }
     public override void _GuiInput(InputEvent input)
     {
-        if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left, DoubleClick: true } mouse && Hit(mouse.Position) is { Definition: { EquipSlot.Length: > 0 } } item)
-        { if (demo) DemoInventory.Equip(item.Id); else core.EquipItem(item.Id, snapshot.Revision); AcceptEvent(); }
+        if(input is InputEventMouseButton {Pressed:true} mouse&&Hit(mouse.Position) is {} item)
+        {
+            SelectedId=item.Id;SelectionChanged?.Invoke(item.Id);QueueRedraw();
+            if(mouse.ButtonIndex==MouseButton.Right){ContextRequested?.Invoke(item.Id,GetGlobalMousePosition()+GetWindow().Position);AcceptEvent();}
+            else if(mouse.ButtonIndex==MouseButton.Left&&mouse.DoubleClick&&item.Definition?.EquipSlot.Length>0){if(demo)DemoInventory.Equip(item.Id);else core.EquipItem(item.Id,snapshot.Revision);AcceptEvent();}
+        }
+        else if(HasFocus()&&!(input is InputEventKey {Echo:true}))
+        {
+            var items=VisibleItems;if(items.Length==0)return;var current=Array.FindIndex(items,i=>i.Id==SelectedId);
+            var previous=input.IsActionPressed("ui_up")||input.IsActionPressed("ui_left");var next=input.IsActionPressed("ui_down")||input.IsActionPressed("ui_right");
+            if(previous||next){var direction=previous?-1:1;var index=current<0?(previous?items.Length-1:0):(current+direction+items.Length)%items.Length;SelectedId=items[index].Id;SelectionChanged?.Invoke(SelectedId);QueueRedraw();AcceptEvent();}
+            else if(input.IsActionPressed("ui_accept")&&snapshot.Item(SelectedId)!=null){ContextRequested?.Invoke(SelectedId,GetGlobalRect().GetCenter()+GetWindow().Position);AcceptEvent();}
+        }
     }
 
     public override void _Draw()
@@ -178,6 +231,7 @@ public partial class InventoryGrid : Control
         var p = SiderealPalette.Current;
         var pitch = Cell;
         var font = GetThemeFont("font", "Label");
+        if(ListMode){DrawList(font);return;}
         for (var y = 0; y < container.Height; y++) for (var x = 0; x < container.Width; x++)
         {
             var rect = new Rect2(x * pitch + 1, y * pitch + 1, pitch - 2, pitch - 2);
@@ -187,12 +241,12 @@ public partial class InventoryGrid : Control
         foreach (var item in snapshot.Items.Where(i => i.ContainerId == container.Id))
         {
             var (w, h) = item.Definition?.Footprint(item.Rotated) ?? (1, 1);
-            var rect = new Rect2(item.X * pitch + 3, item.Y * pitch + 3, w * pitch - 6, h * pitch - 6);
-            var color = p.Rarity(item.Definition?.Rarity ?? "common");
-            var alpha = ItemDrag.Current?.Item.Id == item.Id ? .26f : .78f;
-            DrawRect(rect, p.Surface.Lerp(color, .13f) with { A = alpha });
-            DrawRect(rect, color with { A = item.Id == hovered ? 1f : .65f }, false, item.Id == hovered ? 2 : 1);
-            DrawLine(rect.Position + new Vector2(6, 5), rect.Position + new Vector2(Math.Min(30, rect.Size.X - 6), 5), color, 2);
+            var rect = new Rect2(item.X * pitch + 2, item.Y * pitch + 2, w * pitch - 4, h * pitch - 4);
+            var color = p.Rarity(ItemPresentation.Rarity(item.Definition));
+            var matches=Filter?.Invoke(item)??true;
+            var alpha = !matches ? .13f : ItemDrag.Current?.Item.Id == item.Id ? .26f : 1;
+            ItemFrameStyle.Paint(this,rect,ItemPresentation.Rarity(item.Definition),item.Id==SelectedId,item.Id==hovered,HasFocus()&&item.Id==SelectedId,core.InventoryPending,false,alpha);
+            if(!matches)continue;
             var label = Fit(font, item.Name, rect.Size.X - 12, 13);
             DrawString(font, rect.Position + new Vector2(6, rect.Size.Y - 8), label, HorizontalAlignment.Left, rect.Size.X - 12, 13, p.Text);
             // Silhouette glyphs are interface art, not a substitute for the item model or its physical bounds.
@@ -222,6 +276,19 @@ public partial class InventoryGrid : Control
             var rect = new Rect2(previewCell.X * pitch, previewCell.Y * pitch, w * pitch, h * pitch);
             var color = previewFits ? p.Success : p.Danger;
             DrawRect(rect, color with { A = .24f }); DrawRect(rect, color, false, 2);
+        }
+    }
+
+    private void DrawList(Font font)
+    {
+        var p=SiderealPalette.Current;var items=VisibleItems;
+        if(items.Length==0){DrawString(font,new Vector2(8,25),"No matching items",HorizontalAlignment.Left,Size.X-16,14,p.Muted);return;}
+        for(var i=0;i<items.Length;i++)
+        {
+            var item=items[i];var rect=new Rect2(0,i*64,Size.X,60);ItemFrameStyle.Paint(this,rect,ItemPresentation.Rarity(item.Definition),item.Id==SelectedId,item.Id==hovered,HasFocus()&&item.Id==SelectedId,core.InventoryPending);
+            if(InventoryIcons.Texture(item.Definition) is {} texture)DrawTextureRect(texture,InventoryIcons.Fit(texture,new Rect2(8,rect.Position.Y+5,45,48)),false);
+            DrawString(font,new Vector2(63,rect.Position.Y+24),Fit(font,item.Name,Size.X-72,14),HorizontalAlignment.Left,Size.X-72,14,p.Text);
+            DrawString(font,new Vector2(63,rect.Position.Y+43),$"{ItemPresentation.Category(item,snapshot)} · {item.Definition?.MassKg:0.##} kg",HorizontalAlignment.Left,Size.X-72,11,p.Muted);
         }
     }
 

@@ -44,7 +44,7 @@ public partial class SciFiFrameStyle : StyleBox
         RenderingServer.CanvasItemAddPolyline(canvas, loop, new[] { border }, borderWidth, true);
         if (!rails) return;
         var length = Math.Min(58, rect.Size.X * .22f);
-        var left = new[] { points[7] + new Vector2(0, Math.Min(17, rect.Size.Y * .2f)), points[7], points[0], points[0] + new Vector2(length, 0) };
+        var left = new[] { points[^1] + new Vector2(0, Math.Min(17, rect.Size.Y * .2f)), points[^1], points[0], points[0] + new Vector2(length, 0) };
         var right = new[] { points[3] - new Vector2(0, Math.Min(17, rect.Size.Y * .2f)), points[3], points[4], points[4] - new Vector2(length, 0) };
         foreach (var rail in new[] { left, right })
         {
@@ -60,9 +60,9 @@ public partial class SciFiFrameStyle : StyleBox
     {
         var c = Mathf.Clamp(corner, 0, Math.Min(rect.Size.X, rect.Size.Y) * .24f);
         var p = rect.Position; var e = rect.End;
-        return new[] { new Vector2(p.X + c, p.Y), new Vector2(e.X - c, p.Y),
-            new Vector2(e.X, p.Y + c), new Vector2(e.X, e.Y - c),
-            new Vector2(e.X - c, e.Y), new Vector2(p.X + c, e.Y),
-            new Vector2(p.X, e.Y - c), new Vector2(p.X, p.Y + c) };
+        var right = Math.Min(c + 2, Math.Min(rect.Size.X, rect.Size.Y) * .24f);
+        return new[] { new Vector2(p.X + c, p.Y), new Vector2(e.X - right, p.Y),
+            new Vector2(e.X, p.Y + right), new Vector2(e.X, e.Y - c),
+            new Vector2(e.X - c, e.Y), new Vector2(p.X, e.Y), new Vector2(p.X, p.Y + c) };
     }
 }

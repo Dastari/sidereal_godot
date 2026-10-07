@@ -17,12 +17,16 @@ public partial class SiderealUi : Control
     private readonly bool worldPreview = OS.GetCmdlineUserArgs().Contains("--world-preview");
     private SiderealPalette palette = null!;
     private readonly List<DockWindow> windows = new();
-    private PanelContainer header = null!, footer = null!, login = null!, crew = null!, hud = null!, actionFrame = null!, menu = null!;
+    private readonly Dictionary<string,StorageWindow> storageWindows=new();
+    private readonly List<Action> themePreferenceBindings=new();
+    private bool synchronizingThemePreferences;
+    private PanelContainer header = null!, footer = null!, login = null!, crew = null!, hud = null!, actionFrame = null!;
+    private SystemMenu menu = null!;
     private Control entryBrand = null!;
+    private CrewPreviewView selectionPreview = null!;
     private Label status = null!, crewName = null!, crewInfo = null!, identity = null!, hudName = null!, hudState = null!;
     private Label identitySubtitle = null!;
-    private Label speed = null!, heading = null!, mass = null!, actionHint = null!, context = null!, loginNotice = null!;
-    private Label heroTagline = null!, heroDetail = null!;
+    private Label speed = null!, heading = null!, mass = null!, actionHint = null!, context = null!, loginNotice = null!, crewNotice = null!;
     private Label healthValue = null!, weaponEnergyValue = null!, powerState = null!;
     private Label compactSummary = null!;
     private VBoxContainer fullTelemetry = null!;
@@ -34,11 +38,13 @@ public partial class SiderealUi : Control
     private LineEdit characterName = null!;
     private Button loginButton = null!, enterButton = null!, seatButton = null!, menuButton = null!, settingsButton = null!;
     private Button inventoryNav = null!, equipmentNav = null!, crewNav = null!, signOutNav = null!;
+    private Button entryRetry = null!, entryDiscard = null!, entryReturn = null!, entryLeaveSeat = null!;
     private DockWindow inventoryWindow = null!, equipmentWindow = null!, settingsWindow = null!;
     private InventoryWorkspace inventory = null!;
     private EquipmentPanel equipment = null!;
     private HotbarView hotbar = null!;
     private bool entered, waitingForEntry;
+    private bool entryJoinAttempted, entryAwaitingReceipt;
     private bool gameplayShell;
     private string? notice;
     private float scaleOverride;
@@ -50,8 +56,42 @@ public partial class SiderealUi : Control
     public Rect2 UsableBounds { get; private set; }
     public Rect2 WindowBounds { get; private set; }
     public Rect2 WorldPresentationBounds { get; private set; }
+    public event Action<Key>? GameplayShortcutRequested;
+    public event Action? ResetCameraRequested;
+    public event Action<string?>? ObserveBodyRequested;
+    public bool InteriorView { get; private set; } = true;
+    public void SetViewMode(bool interior) => InteriorView = interior;
+    public void SetGraphicsStatus(string effectiveText) { if (menu != null) menu.EffectiveGraphics = effectiveText; }
+    public void SetVistas((string Id, string Name)[] values) { if (menu != null) menu.SetVistas(values); }
+    public bool OpenContainer(string id)
+    {
+        if(!WorldVisible&&!(demo||worldPreview))return false;
+        var container=InventoryPresentation.Read(core,demo||worldPreview).Container(id);
+        if(container?.Kind!="grid")return false;
+        if(!storageWindows.TryGetValue(id,out var window))
+        {
+            if(storageWindows.Count>=6){ShowMessage("Close a storage window before opening another.");return false;}
+            window=new StorageWindow(core,demo||worldPreview,container,WindowBounds.Position+new Vector2(260+storageWindows.Count*24,24+storageWindows.Count*24));
+            storageWindows[id]=window;windows.Add(window);AddChild(window);
+            window.ItemInspectRequested+=itemId=>inventory.SelectItem(itemId);
+            window.ContainerOpenRequested+=childId=>OpenContainer(childId);
+            var captured=window;
+            window.Closed+=()=>{core.ReleaseControls();GetViewport().GuiReleaseFocus();storageWindows.Remove(id);windows.Remove(captured);captured.QueueFree();};
+            window.AccessLost+=()=>{storageWindows.Remove(id);windows.Remove(captured);captured.QueueFree();};
+        }
+        menu.Hide();window.Show();window.Clamp();window.BringToFront();core.ReleaseControls();return true;
+    }
+    public bool BlocksKeyboardInput => !WorldVisible || menu.Visible || inventoryWindow.Visible || equipmentWindow.Visible || storageWindows.Values.Any(w=>w.Visible) ||
+        inventory.InteractionActive || windows.Exists(w => w.Visible && w.InteractionActive) || GetViewport().GuiGetFocusOwner() != null;
+    public bool BlocksPointerInput => !WorldVisible || menu.Visible || windows.Exists(w=>w.Visible&&w.InteractionActive) || PointerOverUi() || GetViewport().GuiIsDragging();
+    public bool BlocksCameraInput => !WorldVisible || menu.Visible || inventory.InteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || GetViewport().GuiIsDragging() || PointerOverUi();
     public bool GameplayShortcutBlocked => menu.Visible || inventory.InteractionActive || windows.Exists(window => window.Visible && window.InteractionActive);
     public bool WorldVisible => !demo && entered && core.Character?.Connected == true;
+    public void CancelInteractions()
+    {
+        foreach(var window in windows)window.CancelInteraction();
+        GetViewport().GuiCancelDrag();ItemDrag.Released(this);GetViewport().GuiReleaseFocus();core.ReleaseControls();
+    }
     public bool BlocksWorldInput => !WorldVisible || menu.Visible || windows.Exists(w => w.Visible && w.InteractionActive) ||
         inventory.InteractionActive || GetViewport().GuiIsDragging() || GetViewport().GuiGetFocusOwner() != null ||
         GetViewport().GuiGetHoveredControl() != null || PointerOverUi();
@@ -62,6 +102,7 @@ public partial class SiderealUi : Control
         var pointer = GetGlobalMousePosition();
         foreach (var panel in new Control[] { header, footer, login, crew, hud, actionFrame, seatButton, menuButton, menu, settingsButton })
             if (panel.IsVisibleInTree() && panel.GetGlobalRect().HasPoint(pointer)) return true;
+        if(groundLabels.Values.Any(label=>label.IsVisibleInTree()&&label.GetGlobalRect().HasPoint(pointer)))return true;
         return windows.Exists(window => window.IsVisibleInTree() && window.GetGlobalRect().HasPoint(pointer));
     }
 
@@ -75,14 +116,21 @@ public partial class SiderealUi : Control
 
     public override void _Ready()
     {
-        palette = SiderealPalette.LoadProfile(); Theme = palette.CreateTheme();
+        palette = SiderealPalette.LoadProfile();
+        var preferences = NativePreferences.Current;
+        if (preferences.Load(ProjectSettings.GlobalizePath("user://presentation-v1.json")))
+        { palette.Opacity = (float)preferences.Snapshot.PanelOpacity; palette.UiScale = (float)preferences.Snapshot.UiScale; }
+        else preferences.Set(preferences.Snapshot with { PanelOpacity = palette.Opacity, UiScale = palette.UiScale });
+        preferences.Changed += PreferencesChanged;
+        Theme = palette.CreateTheme();
         ReadPreviewLayoutArguments();
         palette.Changed += ApplyTheme;
-        BuildHeader(); BuildLogin(); BuildCrew(); BuildHud(); BuildWindows(); BuildFooter();
+        BuildHeader(); BuildLogin(); BuildCrew(); BuildHud(); BuildWindows(); BuildFooter(); BuildGameplayPanels();
         GetViewport().SizeChanged += QueueLayout;
         hud.MinimumSizeChanged += QueueLayout;
         actionFrame.MinimumSizeChanged += QueueLayout;
         header.MinimumSizeChanged += QueueLayout;
+        login.MinimumSizeChanged += QueueLayout;
         status.MinimumSizeChanged += QueueLayout;
         gameplayShell = demo || worldPreview;
         footer.Visible = demo || worldPreview;
@@ -91,6 +139,8 @@ public partial class SiderealUi : Control
         equipmentWindow.Visible = demo && !worldPreview && UsableBounds.Size.X >= 960;
         settingsWindow.Visible = OS.GetCmdlineUserArgs().Contains("--ui-settings");
         menu.Hide();
+        var previewTab=OS.GetCmdlineUserArgs().FirstOrDefault(arg=>arg.StartsWith("--ui-menu=",StringComparison.Ordinal))?.Split('=',2)[1];
+        if(previewTab!=null){menu.SelectTab(previewTab);menu.Show();menu.BringToFront();}
     }
 
     private void ReadPreviewLayoutArguments()
@@ -109,11 +159,16 @@ public partial class SiderealUi : Control
         }
     }
 
+    private void PreferencesChanged(NativePreferencesSnapshot next)
+    {
+        if(!Mathf.IsEqualApprox(palette.UiScale,(float)next.UiScale))scaleOverride=0;
+        palette.Opacity = (float)next.PanelOpacity; palette.UiScale = (float)next.UiScale;
+        palette.ApplyAndSave();
+    }
+
     private void ApplyTheme()
     {
         Theme = palette.CreateTheme();
-        context.AddThemeColorOverride("font_color", palette.Muted);
-        actionHint.AddThemeColorOverride("font_color", palette.Muted);
         if (healthFill != null) healthFill.BgColor = palette.Danger;
         QueueLayout();
     }
@@ -137,94 +192,90 @@ public partial class SiderealUi : Control
     private void BuildHeader()
     {
         var identityColumn = new VBoxContainer(); identityColumn.AddThemeConstantOverride("separation", 1);
-        identity = EllipsisHeading("SIDEREAL", 29); identityColumn.AddChild(identity);
-        var subtitle = identitySubtitle = UiKit.Label("Explore. Build. Survive. Belong.", 13); subtitle.AddThemeColorOverride("font_color", palette.Muted);
+        identity = EllipsisHeading("SIDEREAL", 25); identityColumn.AddChild(identity);
+        var subtitle = identitySubtitle = UiKit.Label("", 13); subtitle.ThemeTypeVariation="MutedLabel";
         identityColumn.AddChild(subtitle);
         header = UiKit.Panel(identityColumn, 0, "FramePanel"); header.Name = "ShipIdentity"; AddChild(header);
 
-        entryBrand = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        var wordmark = UiKit.Heading("SIDEREAL", 86);
-        wordmark.AddThemeColorOverride("font_color", palette.Text); entryBrand.AddChild(wordmark);
-        heroTagline = UiKit.Heading("Explore. Build. Survive. Belong.", 25);
-        heroTagline.AddThemeColorOverride("font_color", palette.Accent); entryBrand.AddChild(heroTagline);
-        heroDetail = FlexibleLabel("A brighter galaxy. Together.", 18);
-        heroDetail.AddThemeColorOverride("font_color", palette.Muted); entryBrand.AddChild(heroDetail);
+        entryBrand = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        ((HBoxContainer)entryBrand).AddThemeConstantOverride("separation",8);
+        entryBrand.AddChild(new SiderealEmblem());
+        var wordmark = UiKit.Heading("SIDEREAL", 64);
+        entryBrand.AddChild(wordmark);
         AddChild(entryBrand);
 
         context = UiKit.Label("", 14); context.HorizontalAlignment = HorizontalAlignment.Center;
-        context.MouseFilter = MouseFilterEnum.Ignore; context.AddThemeColorOverride("font_color", palette.Muted); AddChild(context);
+        context.MouseFilter = MouseFilterEnum.Ignore; context.ThemeTypeVariation="MutedLabel"; AddChild(context);
         menuButton = UiKit.Button("Menu", () => { core.ReleaseControls(); menu.Visible = !menu.Visible; });
         menuButton.CustomMinimumSize = new Vector2(92, 44); menuButton.Name = "Menu"; menuButton.ZIndex = 95; AddChild(menuButton);
         settingsButton = UiKit.Button("Interface", () => Toggle(settingsWindow));
         settingsButton.ThemeTypeVariation = "GhostButton"; settingsButton.ZIndex = 95; AddChild(settingsButton);
 
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 8);
-        inventoryNav = UiKit.Button("Inventory  [I]", () => { menu.Hide(); Toggle(inventoryWindow); }); column.AddChild(inventoryNav);
-        equipmentNav = UiKit.Button("Character  [C]", () => { menu.Hide(); Toggle(equipmentWindow); }); column.AddChild(equipmentNav);
-        column.AddChild(UiKit.Button("Interface settings", () => { menu.Hide(); Toggle(settingsWindow); }));
-        crewNav = UiKit.Button("Return to crew", () => { menu.Hide(); entered = false; core.ReleaseControls(); HideGameWindows(); });
-        signOutNav = UiKit.Button("Sign out", () => { menu.Hide(); entered = false; waitingForEntry = false; HideGameWindows(); signOut(); });
-        column.AddChild(crewNav); column.AddChild(signOutNav);
-        menu = UiKit.Panel(column, 0, "FramePanel"); menu.Name = "SessionMenu"; menu.ZIndex = 100; AddChild(menu);
+        menu = new SystemMenu(core, () => Toggle(inventoryWindow), () => Toggle(equipmentWindow),
+            () => { menu.Hide(); entered = false; core.ReleaseControls(); HideGameWindows(); },
+            () => { menu.Hide(); entered = false; waitingForEntry = false; HideGameWindows(); signOut(); },
+            () => { menu.Hide(); Toggle(settingsWindow); }, () => { foreach (var window in windows) window.ResetLayout(); });
+        menu.Name = "SessionMenu"; menu.ZIndex = 100; AddChild(menu); windows.Add(menu);
+        menu.GameplayAction = key => { if(key==Key.N)ToggleNavigation();else if(key==Key.Z)ToggleGroundLabels();else GameplayShortcutRequested?.Invoke(key); };
+        menu.ResetCamera = () => ResetCameraRequested?.Invoke();
+        inventoryNav = menu.InventoryButton; equipmentNav = menu.CharacterButton; crewNav = menu.ReturnButton; signOutNav = menu.SignOutButton;
     }
 
     private void BuildLogin()
     {
-        var column = loginColumn = new VBoxContainer(); column.AddThemeConstantOverride("separation", 16);
-        var title = loginTitle = UiKit.Heading("CREW ACCESS", 38); title.AddThemeColorOverride("font_color", palette.Accent); column.AddChild(title);
-        column.AddChild(FlexibleLabel("Your account. Your crew.", 21));
-        column.AddChild(new HSeparator());
-        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        loginNotice = FlexibleLabel("", 16); loginNotice.Visible = false; details.AddChild(loginNotice);
-        details.AddChild(FlexibleLabel("Continue your journey with your Dastari account. Your characters and ships will be here when you return.", 18));
-        details.AddChild(FlexibleLabel("Sign-in opens in your browser. Return to Sidereal when it is complete.", 16));
-        scroll.AddChild(details); column.AddChild(scroll);
-        loginButton = UiKit.Button("Sign in with Dastari", signIn); loginButton.ThemeTypeVariation = "AccentButton";
-        loginButton.CustomMinimumSize = new Vector2(0, 56); column.AddChild(loginButton);
-        login = UiKit.Panel(column, 8, "FramePanel"); login.Name = "CrewAccess"; AddChild(login);
+        var column=loginColumn=new VBoxContainer();column.AddThemeConstantOverride("separation",12);
+        loginTitle=UiKit.Heading("Sign in",22);column.AddChild(loginTitle);column.AddChild(new HSeparator());
+        var description=FlexibleLabel("Sign in with your Dastari account.",14);description.ThemeTypeVariation="MutedLabel";column.AddChild(description);
+        loginNotice=FlexibleLabel("",13);loginNotice.Visible=false;column.AddChild(loginNotice);
+        loginButton=UiKit.Button("Sign in",signIn);loginButton.AddThemeFontSizeOverride("font_size",18);loginButton.CustomMinimumSize=new Vector2(0,40);column.AddChild(loginButton);
+        var registration=FlexibleLabel("Account registration is available on the sign-in page.",12);registration.ThemeTypeVariation="MutedLabel";column.AddChild(registration);
+        login=UiKit.Panel(column,0,"FramePanel");login.Name="SignIn";AddChild(login);
     }
 
     private void BuildCrew()
     {
         var column = crewColumn = new VBoxContainer(); column.AddThemeConstantOverride("separation", 14);
-        var title = crewTitle = UiKit.Heading("SELECT CREW", 36); title.AddThemeColorOverride("font_color", palette.Accent); column.AddChild(title);
+        var title = crewTitle = UiKit.Heading("Character select", 32); column.AddChild(title);
         crewName = EllipsisHeading("Preparing your character…", 30); column.AddChild(crewName);
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         crewInfo = FlexibleLabel("Waiting for your game session.", 18); details.AddChild(crewInfo);
-        details.AddChild(new HSeparator());
-        details.AddChild(FlexibleLabel("Your crew is persistent. Resume your character to return to the world.", 16));
+        crewNotice = FlexibleLabel("", 15); crewNotice.ThemeTypeVariation="WarningLabel"; details.AddChild(crewNotice);
+        entryRetry=UiKit.Button("Retry shared-system entry",()=>{entryJoinAttempted=false;waitingForEntry=true;notice=null;});details.AddChild(entryRetry);
+        entryDiscard=UiKit.Button("Discard saved join request",()=>{if(core.DiscardPendingSharedJoin()){entryJoinAttempted=false;waitingForEntry=false;notice=null;}});details.AddChild(entryDiscard);
+        entryReturn=UiKit.Button("Return from construction review",()=>core.ReturnFromReview());details.AddChild(entryReturn);
+        entryLeaveSeat=UiKit.Button("Leave control seat",()=>{GetViewport().GuiReleaseFocus();core.ToggleSeat(fromUi:true);});details.AddChild(entryLeaveSeat);
+
         scroll.AddChild(details); column.AddChild(scroll);
-        characterName = new LineEdit { PlaceholderText = "Character name", Text = "Explorer", MaxLength = 24,
+        characterName = new LineEdit { PlaceholderText = "Character name", Text = "Explorer", MaxLength = 40,
             CustomMinimumSize = new Vector2(0, 44), TooltipText = "Create your first character. Existing characters keep their name." };
         characterName.FocusEntered += core.ReleaseControls; column.AddChild(characterName);
         enterButton = UiKit.Button("Enter world", () => RequestEnter()); enterButton.ThemeTypeVariation = "AccentButton";
         enterButton.CustomMinimumSize = new Vector2(0, 56); column.AddChild(enterButton);
         crew = UiKit.Panel(column, 8, "FramePanel"); crew.Name = "CrewSelection"; AddChild(crew);
+        selectionPreview=new CrewPreviewView(core) {Name="CharacterSelectionPreview"};AddChild(selectionPreview);selectionPreview.Hide();
     }
 
     private void BuildHud()
     {
-        var column = fullTelemetry = new VBoxContainer(); column.AddThemeConstantOverride("separation", 7);
-        hudName = EllipsisHeading("", 24); column.AddChild(hudName);
-        hudState = FlexibleLabel("", 14); column.AddChild(hudState);
-        column.AddChild(new HSeparator());
+        var column = fullTelemetry = new VBoxContainer(); column.AddThemeConstantOverride("separation", 4);
+        hudName = EllipsisHeading("", 20); column.AddChild(hudName);
+        hudState = FlexibleLabel("", 12); column.AddChild(hudState);
         var telemetry = telemetryRow = new HBoxContainer(); telemetry.AddThemeConstantOverride("separation", 24);
-        speed = UiKit.Heading("— m/s", 25); speed.SizeFlagsHorizontal = SizeFlags.ExpandFill; telemetry.AddChild(speed);
-        heading = UiKit.Heading("—°", 25); telemetry.AddChild(heading); column.AddChild(telemetry);
-        healthRow = new HBoxContainer(); healthRow.AddChild(UiKit.Label("Crew health", 14)); healthRow.AddChild(UiKit.Spacer());
-        healthValue = UiKit.Label("", 14); healthRow.AddChild(healthValue); column.AddChild(healthRow);
+        speed = UiKit.Label("— m/s", 12); speed.SizeFlagsHorizontal = SizeFlags.ExpandFill; telemetry.AddChild(speed);
+        heading = UiKit.Label("—°", 12); telemetry.AddChild(heading); column.AddChild(telemetry);
+        healthRow = new HBoxContainer(); healthRow.AddChild(UiKit.Label("Health", 12)); healthRow.AddChild(UiKit.Spacer());
+        healthValue = UiKit.Label("", 12); healthRow.AddChild(healthValue); column.AddChild(healthRow);
         health = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore }; column.AddChild(health);
         healthFill = new StyleBoxFlat { BgColor = palette.Danger }; health.AddThemeStyleboxOverride("fill", healthFill);
-        weaponEnergyRow = new HBoxContainer(); weaponEnergyRow.AddChild(UiKit.Label("Weapon energy", 14)); weaponEnergyRow.AddChild(UiKit.Spacer());
-        weaponEnergyValue = UiKit.Label("", 14); weaponEnergyRow.AddChild(weaponEnergyValue); column.AddChild(weaponEnergyRow);
+        weaponEnergyRow = new HBoxContainer(); weaponEnergyRow.AddChild(UiKit.Label("Weapon energy", 12)); weaponEnergyRow.AddChild(UiKit.Spacer());
+        weaponEnergyValue = UiKit.Label("", 12); weaponEnergyRow.AddChild(weaponEnergyValue); column.AddChild(weaponEnergyRow);
         weaponEnergy = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore }; column.AddChild(weaponEnergy);
-        var cargo = cargoRow = new HBoxContainer(); cargo.AddChild(UiKit.Label("Carry mass", 14)); cargo.AddChild(UiKit.Spacer());
-        mass = UiKit.Label("", 14); cargo.AddChild(mass); column.AddChild(cargo);
+        var cargo = cargoRow = new HBoxContainer(); cargo.AddChild(UiKit.Label("Carry mass", 12)); cargo.AddChild(UiKit.Spacer());
+        mass = UiKit.Label("", 12); cargo.AddChild(mass); column.AddChild(cargo);
         carry = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore };
         column.AddChild(carry);
-        powerState = FlexibleLabel("", 14); column.AddChild(powerState);
+        powerState = FlexibleLabel("", 12); column.AddChild(powerState);
         var telemetryComposition = new VBoxContainer(); telemetryComposition.AddChild(column);
         compactSummary = UiKit.Label("", 15);
         compactSummary.ClipText = true;
@@ -236,13 +287,15 @@ public partial class SiderealUi : Control
         hud = UiKit.Panel(telemetryComposition, 0, "FramePanel"); hud.Name = "CrewTelemetry"; AddChild(hud);
 
         var actions = new VBoxContainer(); actions.AddThemeConstantOverride("separation", 8);
-        actionTitle = UiKit.Heading("ACTION BAR", 16); actionTitle.AddThemeColorOverride("font_color", palette.Accent); actions.AddChild(actionTitle);
+        actionTitle = UiKit.Heading("ACTION BAR", 16); actionTitle.ThemeTypeVariation="AccentHeading"; actions.AddChild(actionTitle);
         hotbar = new HotbarView(core, demo || worldPreview); actions.AddChild(hotbar);
+        hotbar.InspectRequested += id => { core.ReleaseControls(); inventoryWindow.Show(); inventoryWindow.BringToFront(); inventory.SelectItem(id); };
+        hotbar.OpenInventoryRequested+=()=>{core.ReleaseControls();inventoryWindow.Show();inventoryWindow.BringToFront();};
         actionFrame = UiKit.Panel(actions, 0, "FramePanel"); actionFrame.Name = "ActionBar"; AddChild(actionFrame);
         actionHint = UiKit.Label("", 14); actionHint.MouseFilter = MouseFilterEnum.Ignore;
         actionHint.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        actionHint.AddThemeColorOverride("font_color", palette.Muted); AddChild(actionHint);
-        seatButton = UiKit.Button("E   Pilot station", core.ToggleSeat); seatButton.Name = "StationInteraction";
+        actionHint.ThemeTypeVariation="MutedLabel"; AddChild(actionHint);
+        seatButton = UiKit.Button("E   Use", () => {GetViewport().GuiReleaseFocus();core.Interact(fromUi:true);}); seatButton.Name = "StationInteraction";
         seatButton.CustomMinimumSize = new Vector2(0, 48); AddChild(seatButton);
     }
 
@@ -256,20 +309,25 @@ public partial class SiderealUi : Control
     {
         inventoryWindow = Window("inventory", "INVENTORY", new Vector2(26, 176), new Vector2(680, 485));
         inventory = new InventoryWorkspace(core, demo); inventoryWindow.Content.AddChild(inventory);
+        inventory.ContainerOpenRequested+=id=>OpenContainer(id);
         equipmentWindow = Window("equipment", "CHARACTER & EQUIPMENT", new Vector2(727, 176), new Vector2(523, 485));
         equipment = new EquipmentPanel(core, demo); equipmentWindow.Content.AddChild(equipment);
-        settingsWindow = Window("interface", "INTERFACE SETTINGS", new Vector2(400, 115), new Vector2(445, 510));
+        equipment.InspectRequested+=id=>{core.ReleaseControls();inventoryWindow.Show();inventoryWindow.BringToFront();inventory.SelectItem(id);};
+        settingsWindow = Window("interface", "Theme colours", new Vector2(400, 115), new Vector2(445, 510));
         var column = settingsWindow.Content;
         column.AddChild(UiKit.Paragraph("Theme and layout preferences apply throughout Sidereal and are saved on this computer.", 300));
-        AddSlider(column, "Panel opacity", .35, 1, .01, palette.Opacity, value => palette.Opacity = (float)value);
-        AddSlider(column, "UI scale", .75, 1.5, .05, palette.UiScale, value => { scaleOverride = 0; palette.UiScale = (float)value; });
+        AddSlider(column, "Panel opacity", .3, 1, .01, ()=>NativePreferences.Current.Snapshot.PanelOpacity, value => NativePreferences.Current.Set(NativePreferences.Current.Snapshot with { PanelOpacity = value }));
+        AddSlider(column, "UI scale", .75, 1.5, .05, ()=>NativePreferences.Current.Snapshot.UiScale, value => { scaleOverride = 0; NativePreferences.Current.Set(NativePreferences.Current.Snapshot with { UiScale = value }); });
         AddColor(column, "Panel colour", palette.Surface, value => palette.Surface = value);
         AddColor(column, "Accent colour", palette.Accent, value => palette.Accent = value);
         AddColor(column, "Text colour", palette.Text, value => palette.Text = value);
         AddColor(column, "Secondary text", palette.Muted, value => palette.Muted = value);
         AddColor(column, "Danger / invalid drop", palette.Danger, value => palette.Danger = value);
-        AddColor(column, "Success / uncommon", palette.Success, value => palette.Success = value);
-        AddColor(column, "Warning / legendary", palette.Warning, value => palette.Warning = value);
+        AddColor(column, "Success", palette.Success, value => palette.Success = value);
+        AddColor(column, "Warning", palette.Warning, value => palette.Warning = value);
+        AddColor(column, "Common items", palette.Common, value => palette.Common = value);
+        AddColor(column, "Uncommon items", palette.Uncommon, value => palette.Uncommon = value);
+        AddColor(column, "Legendary items", palette.Legendary, value => palette.Legendary = value);
         AddColor(column, "Rare items", palette.Rare, value => palette.Rare = value);
         AddColor(column, "Epic items", palette.Epic, value => palette.Epic = value);
         column.AddChild(UiKit.Button("Reset window layout", () => { foreach (var window in windows) window.ResetLayout(); }));
@@ -283,13 +341,15 @@ public partial class SiderealUi : Control
         picker.ColorChanged += value => { setter(value); palette.ApplyAndSave(); }; row.AddChild(picker); column.AddChild(row);
     }
 
-    private void AddSlider(VBoxContainer column, string label, double min, double max, double step, double initial, Action<double> setter)
+    private void AddSlider(VBoxContainer column, string label, double min, double max, double step, Func<double> getter, Action<double> setter)
     {
+        var initial=getter();
         var row = new VBoxContainer(); var value = UiKit.Label($"{label}  {initial:P0}");
         row.AddChild(value);
         var slider = new HSlider { MinValue = min, MaxValue = max, Step = step, Value = initial,
             SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(125, 28) };
-        slider.ValueChanged += next => { setter(next); value.Text = $"{label}  {next:P0}"; palette.ApplyAndSave(); };
+        slider.ValueChanged += next => {if(!synchronizingThemePreferences)setter(next);};
+        themePreferenceBindings.Add(()=>{var current=getter();slider.Value=current;value.Text=$"{label}  {current:P0}";});
         row.AddChild(slider); column.AddChild(row);
     }
 
@@ -348,16 +408,15 @@ public partial class SiderealUi : Control
         variant = a.X < 960 ? "Narrow" : a.X < 1280 ? "Compact" : a.X < 1600 ? "Standard" : "Wide";
         shortHeight = a.Y < 720;
         var tightHud = a.X < 720 && shortHeight;
-        identitySubtitle.Visible = !tightHud;
-        header.ThemeTypeVariation = tightHud ? "CompactFramePanel" : "FramePanel";
-        header.Position = p; header.Size = new Vector2(Math.Min(tightHud ? 250 : 300, a.X * .55f), tightHud ? 52 : 76);
+        identitySubtitle.Visible = false;
+        header.ThemeTypeVariation = "CompactFramePanel";
+        header.Position = p; header.Size = new Vector2(Math.Min(233, a.X * .42f), 52);
         menuButton.Size = new Vector2(100, 48); menuButton.Position = new Vector2(e.X - menuButton.Size.X, p.Y + 2);
         settingsButton.Size = new Vector2(122, 44); settingsButton.Position = new Vector2(e.X - settingsButton.Size.X, p.Y + 2);
         context.Position = new Vector2(p.X + header.Size.X + 12, p.Y + 22);
         context.Size = new Vector2(Math.Max(0, a.X - header.Size.X - menuButton.Size.X - 36), 25);
         context.Visible = gameplayShell && a.X >= 1080;
-        menu.Size = new Vector2(Math.Min(240, a.X), 0);
-        menu.Position = new Vector2(e.X - menu.Size.X, p.Y + 64);
+
 
         var menuWidth = Math.Min(1760, a.X);
         var menuLeft = p.X + (a.X - menuWidth) / 2;
@@ -365,37 +424,38 @@ public partial class SiderealUi : Control
         var top = p.Y + (shortHeight ? 64 : 112);
         var bottom = e.Y - (shortHeight ? 44 : 54);
         var cardHeight = Math.Min(shortHeight ? 362 : 430, Math.Max(1, bottom - top));
-        loginColumn.AddThemeConstantOverride("separation", shortHeight ? 8 : 16);
+        loginColumn.AddThemeConstantOverride("separation",12);
         crewColumn.AddThemeConstantOverride("separation", shortHeight ? 8 : 14);
-        loginTitle.AddThemeFontSizeOverride("font_size", shortHeight ? 30 : 38);
+        loginTitle.AddThemeFontSizeOverride("font_size",22);
         crewTitle.AddThemeFontSizeOverride("font_size", shortHeight ? 28 : 36);
-        loginButton.CustomMinimumSize = enterButton.CustomMinimumSize = new Vector2(0, shortHeight ? 44 : 56);
+        loginButton.CustomMinimumSize=new Vector2(0,40);enterButton.CustomMinimumSize=new Vector2(0,shortHeight?44:56);
         var cardX = a.X < 960 ? p.X + (a.X - cardWidth) / 2 : menuLeft + Math.Min(28, menuWidth * .025f);
         var cardY = top + Math.Max(0, (bottom - top - cardHeight) * .42f);
-        login.Position = crew.Position = new Vector2(cardX, cardY);
-        login.Size = crew.Size = new Vector2(cardWidth, cardHeight);
-        entryBrand.Position = new Vector2(menuLeft + 24, p.Y - 7);
-        entryBrand.Size = new Vector2(Math.Max(1, menuWidth - 180), shortHeight ? 90 : 160);
+        crew.Position=new Vector2(cardX,cardY);crew.Size=new Vector2(cardWidth,cardHeight);
+        selectionPreview.Position=new Vector2(crew.GetRect().End.X+36,Math.Max(top,p.Y+84));
+        selectionPreview.Size=new Vector2(Math.Max(1,Math.Min(440,e.X-selectionPreview.Position.X)),Math.Max(1,Math.Min(640,bottom-selectionPreview.Position.Y)));
+        var loginWidth=Math.Min(360,a.X);var loginHeight=Math.Max(200,login.GetCombinedMinimumSize().Y);
+        login.Size=new Vector2(loginWidth,loginHeight);
+        login.Position=new Vector2(p.X+(a.X-loginWidth)/2,Math.Clamp((top+e.Y-loginHeight)/2,p.Y+64,Math.Max(p.Y+64,e.Y-loginHeight)));
+        entryBrand.Position=new Vector2(p.X+12,p.Y-3);
+        entryBrand.Size=new Vector2(Math.Max(1,menuWidth-180),shortHeight?60:84);
         foreach (var child in entryBrand.GetChildren().OfType<Label>())
-            if (child.Text == "SIDEREAL") child.AddThemeFontSizeOverride("font_size", shortHeight ? 56 : 80);
-        heroTagline.Visible = !shortHeight;
-        heroDetail.Visible = !shortHeight && a.X >= 960;
+            if (child.Text == "SIDEREAL") child.AddThemeFontSizeOverride("font_size",Math.Clamp((int)(a.X*.045),38,80));
 
         var stackedHud = a.X < 720;
-        var hudWidth = stackedHud ? a.X : Math.Min(310, a.X * .39f);
-        var actionWidth = stackedHud ? Math.Min(412, a.X) : Math.Min(452, a.X - hudWidth - 20);
+        var hudWidth = stackedHud ? a.X : Math.Min(233, a.X * .39f);
+        var actionWidth = stackedHud ? Math.Min(710, a.X) : Math.Min(710, a.X - hudWidth - 20);
         var compactHud = stackedHud && shortHeight;
         fullTelemetry.Visible = !compactHud; compactSummary.Visible = compactHud;
-        hud.ThemeTypeVariation = actionFrame.ThemeTypeVariation = compactHud ? "CompactFramePanel" : "FramePanel";
+        hud.ThemeTypeVariation = "CompactFramePanel";
+        actionFrame.ThemeTypeVariation=shipActions.Visible?"CompactFramePanel":"ActionBarPanel";
+        hotbar.SetCompact(compactHud||a.X<500);
         powerState.Visible = !compactHud && core.Power != null;
         carry.Visible = !compactHud && (demo || worldPreview || core.Inventory.Available) && (demo || worldPreview || core.Inventory.CarryLimitKg > 0);
-        var telemetryHeight = compactHud ? 36 : (shortHeight ? 151 : 163);
-        if (!compactHud && !demo && !worldPreview && core.Vitals != null) telemetryHeight += 35;
-        if (!compactHud && !demo && !worldPreview && core.Combat?.WeaponItemId.Length > 0) telemetryHeight += 35;
-        if (!compactHud && powerState.Visible) telemetryHeight += 24;
+        var telemetryHeight = compactHud ? 36 : Math.Max(130, fullTelemetry.GetCombinedMinimumSize().Y + 28);
         hud.Size = new Vector2(hudWidth, telemetryHeight);
-        actionTitle.Visible = !compactHud;
-        var actionHeight = compactHud ? 80f : 125f;
+        actionTitle.Visible = !compactHud&&shipActions.Visible;
+        var actionHeight = compactHud ? 72f : 104f;
         actionFrame.Size = new Vector2(actionWidth, actionHeight);
         var actionX = stackedHud ? p.X + (a.X - actionWidth) / 2 : Math.Max(p.X + hudWidth + 16, p.X + (a.X - actionWidth) / 2);
         actionX = Math.Min(actionX, e.X - actionWidth);
@@ -406,7 +466,7 @@ public partial class SiderealUi : Control
         if (stackedHud && !compactHud) hud.Position = new Vector2(p.X, actionFrame.Position.Y - hud.Size.Y - 14);
         actionHint.Position = new Vector2(actionFrame.Position.X, actionFrame.Position.Y - 25);
         actionHint.Size = new Vector2(actionWidth, 22);
-        actionHint.Visible = gameplayShell && a.X >= 960 && !shortHeight;
+        actionHint.Visible = gameplayShell && a.X >= 960 && !shortHeight && NativePreferences.Current.Snapshot.ShowControlHints;
         var interactionWidth = tightHud ? Math.Min(220, menuButton.Position.X - header.GetRect().End.X - 24) : Math.Min(278, a.X);
         seatButton.Size = new Vector2(interactionWidth, 50);
         var trailingSpace = e.X - actionFrame.GetRect().End.X;
@@ -450,20 +510,28 @@ public partial class SiderealUi : Control
     private void Toggle(DockWindow window)
     {
         core.ReleaseControls(); window.Visible = !window.Visible;
-        if (window.Visible) { window.BringToFront(); if (UsableBounds.Size.X < 960) foreach (var other in windows) if (other != window) other.Hide(); }
+        if (window.Visible) { if(window!=menu)menu.Hide();window.BringToFront(); if (UsableBounds.Size.X < 960) foreach (var other in windows) if (other != window) other.Hide(); }
     }
-    private void HideGameWindows() { inventoryWindow.Hide(); equipmentWindow.Hide(); }
+    private void HideGameWindows() { inventoryWindow.Hide();equipmentWindow.Hide();navigation?.Hide();objectDetails?.Hide();foreach(var window in storageWindows.Values.ToArray())window.Close();core.SelectedPlacementId=null; }
     public void ShowMessage(string text) => notice = text;
 
     public object SmokeFacts() => new {
-        inventoryVisible = inventoryWindow.Visible, equipmentVisible = equipmentWindow.Visible, menuOpen = menu.Visible, dragging = inventoryWindow.InteractionActive,
+        inventoryVisible = inventoryWindow.Visible, equipmentVisible = equipmentWindow.Visible, menuOpen = menu.Visible, selectedMenuTab = menu.SelectedTab, navigationVisible = navigation.Visible, objectDetailsVisible = objectDetails.Visible,
+        preferences = NativePreferences.Current.Snapshot, keyboardBlocked = BlocksKeyboardInput, pointerBlocked = BlocksPointerInput, cameraBlocked = BlocksCameraInput, dragging = inventoryWindow.InteractionActive,
+        itemDragging=inventory.InteractionActive,guiDragging=GetViewport().GuiIsDragging(),windowInteractions=windows.Where(w=>w.InteractionActive).Select(w=>w.LayoutKey).ToArray(),
+        entry=new {entered,waitingForEntry,awaitingReceipt=entryAwaitingReceipt,joinAttempted=entryJoinAttempted,phase=core.EnterPhase,message=crewNotice.Text,returnVisible=entryReturn.Visible,retryVisible=entryRetry.Visible,enterDisabled=enterButton.Disabled},
         focus = GetViewport().GuiGetFocusOwner()?.Name.ToString(), hovered = GetViewport().GuiGetHoveredControl()?.Name.ToString(),
         inventoryX = inventoryWindow.GetGlobalRect().Position.X, inventoryY = inventoryWindow.GetGlobalRect().Position.Y,
         inventoryWidth = inventoryWindow.GetGlobalRect().Size.X, inventoryHeight = inventoryWindow.GetGlobalRect().Size.Y,
         inventoryWindow = Rectangle(inventoryWindow), equipmentWindow = Rectangle(equipmentWindow), settingsWindow = Rectangle(settingsWindow), sessionMenu = Rectangle(menu),
+        storageWindows=storageWindows.Values.Select(w=>new {id=w.ContainerId,rect=Rectangle(w)}).ToArray(),
+        groundLabelsVisible=showGroundLabels, groundLabels=groundLabels.Select(l=>new {id=l.Key,rect=Rectangle(l.Value)}).ToArray(),
+        equipmentPreview=equipment.PreviewFacts, selectionPreview=selectionPreview.SmokeFacts(),
+        combatFeedback=combatFeedback.Facts(),
+        menuControls = Descendants(menu).OfType<Control>().Where(c=>c.IsVisibleInTree() && c is Button or HSlider or LineEdit).Select(c=>new { name=c.Name.ToString(), text=c is Button b?b.Text:c is LineEdit e?e.Text:"", sliderValue=c is HSlider slider?(double?)slider.Value:null, rect=Rectangle(c) }).ToArray(),
         inventory = demo || worldPreview ? DemoInventory.Snapshot : core.Inventory,
         grids = Descendants(inventory).OfType<InventoryGrid>().Select(grid => grid.SmokeGeometry()).ToArray(),
-        hotbar = hotbar.GetChildren().OfType<Control>().Select(Rectangle).ToArray(),
+        hotbar = hotbar.VisualSlots.Select(Rectangle).ToArray(),
         equipment = Descendants(equipment).OfType<EquipmentSlot>().Select(Rectangle).ToArray(),
         telemetryChildren = fullTelemetry.GetChildren().OfType<Control>().Select(control => new {
             name = control.Name.ToString(), minimum = new { width = control.GetCombinedMinimumSize().X, height = control.GetCombinedMinimumSize().Y }, rect = Rectangle(control) }).ToArray(),
@@ -487,18 +555,32 @@ public partial class SiderealUi : Control
     public void RequestEnter(string? name = null)
     {
         if (demo || worldPreview || core.Connection == null) return;
-        core.Enter(name ?? characterName.Text); characterName.ReleaseFocus(); waitingForEntry = true; notice = null;
+        var character=core.Character;
+        entryAwaitingReceipt=character?.Connected!=true||core.EnterFailed;
+        if(entryAwaitingReceipt&&!core.TryEnter(name??character?.Name??characterName.Text))
+        { waitingForEntry=false;entryAwaitingReceipt=false;notice=core.EnterMessage;return; }
+        characterName.ReleaseFocus();waitingForEntry=true;entryJoinAttempted=false;notice=null;
     }
 
     public void Refresh(bool authenticating, string message)
     {
         var character = core.Character;
-        if (waitingForEntry && character?.Connected == true) { entered = true; waitingForEntry = false; }
+        synchronizingThemePreferences=true;foreach(var binding in themePreferenceBindings)binding();synchronizingThemePreferences=false;
+        if(waitingForEntry&&entryAwaitingReceipt&&core.EnterFailed)
+        { waitingForEntry=false;entryAwaitingReceipt=false;notice=core.EnterMessage; }
+        if(waitingForEntry&&entryAwaitingReceipt&&core.EnterPhase=="confirmed")entryAwaitingReceipt=false;
+        if(waitingForEntry&&!entryAwaitingReceipt&&character?.Connected==true)
+        {
+            var admission=core.Connection?.Db.OwnWorldAdmission.Iter().FirstOrDefault(a=>a.CharacterId==character.Id&&a.ShipId==character.ShipId);
+            if(admission!=null&&core.SharedAdmissionReady&&core.SpatialReady){entered=true;waitingForEntry=false;entryJoinAttempted=false;notice=null;}
+            else if(!entryJoinAttempted&&!core.SharedJoinPending&&core.CanJoinSharedWorld){entryJoinAttempted=true;core.JoinSharedWorld();}
+        }
         if (character == null) entered = false;
         var shell = demo || worldPreview || WorldVisible;
         var shellChanged = shell != gameplayShell; gameplayShell = shell;
         login.Visible = !shell && core.Connection == null;
         crew.Visible = !shell && core.Connection != null;
+        selectionPreview.Visible=crew.Visible&&character!=null&&UsableBounds.Size.X>=960&&UsableBounds.Size.Y>=600;
         hud.Visible = actionFrame.Visible = menuButton.Visible = shell;
         header.Visible = shell; entryBrand.Visible = !shell; settingsButton.Visible = !shell;
         inventoryNav.Visible = equipmentNav.Visible = shell;
@@ -506,23 +588,23 @@ public partial class SiderealUi : Control
         crewNav.Visible = !demo && !worldPreview && WorldVisible;
         signOutNav.Visible = !demo && !worldPreview && (core.Connection != null || authenticating);
         loginButton.Disabled = authenticating;
-        loginButton.Text = authenticating ? "Complete sign-in in your browser" : "Sign in with Dastari";
+        loginButton.Text = authenticating ? "Complete sign-in in your browser" : "Sign in";
         loginNotice.Text = message;
         loginNotice.Visible = login.Visible && message != "Sign in to connect your character.";
-        enterButton.Disabled = core.Connection == null || waitingForEntry;
-        enterButton.Text = waitingForEntry ? "Entering world…" : character == null ? "Create character & enter" : "Enter world";
+        enterButton.Disabled=core.Connection==null||waitingForEntry||core.SharedJoinPending||(character==null&&characterName.Text.Trim().Length<2);
+        enterButton.Text=waitingForEntry?(core.SharedJoinPending?"Joining shared system…":"Loading game…"):character==null?"Create character":"Enter game";
         characterName.Visible = character == null;
-        crewName.Text = character?.Name ?? "Your first journey";
-        crewInfo.Text = character == null ? "Choose a name to create your persistent character." : $"{core.Ship?.Name ?? "Preparing your ship"}\nYour existing character is ready.";
+        crewName.Text = character?.Name ?? "Create character";
+        crewInfo.Text = character == null ? "No character is linked to this account. Choose a name between 2 and 40 characters." : $"{core.Ship?.Name ?? "No ship assigned"}\nCharacter linked to this account.";
 
         var preview = demo || worldPreview;
-        identity.Text = worldPreview ? "Wayfarer · Scene preview" : demo ? "Wren · UI preview" : core.Ship?.Name ?? "Sidereal";
+        identity.Text = worldPreview ? "Wayfarer · Scene preview" : demo ? "Wren · UI preview" : core.CurrentPresentedShip?.Name ?? core.Instance?.Name ?? core.Ship?.Name ?? "Sidereal";
         hudName.Text = preview ? "Sample crew" : character?.Name ?? "Crew";
-        var occupied = core.IsPiloting || core.Seat != null;
-        hudState.Text = preview ? "Sample telemetry · No game session" : occupied ? "Control station occupied" : "On foot";
-        context.Text = preview ? "Scene preview" : core.Flight?.Active == true ? "In flight" : core.Instance != null ? "Ship interior" : "World";
-        speed.Text = !preview && core.Ship is { } ship ? $"{Math.Sqrt(ship.Vx * ship.Vx + ship.Vy * ship.Vy):F1} m/s" : "— m/s";
-        heading.Text = !preview && core.Ship is { } current ? $"{((current.Heading * 180 / Math.PI) % 360 + 360) % 360:F0}°" : "—°";
+        var occupied = core.IsPiloting;
+        hudState.Text = preview ? "Sample telemetry · No game session" : core.Eva is {} eva ? $"EVA · {eva.Phase}" : core.Vitals?.State is "downed" or "dead" ? core.Vitals.State : core.RecoveringPilot ? "Pilot exit recovery pending" : occupied ? "Helm" : core.Resting ? "Seated" : core.CombatEnabled ? "On foot · Combat" : "On foot";
+        context.Text = preview ? "Scene preview" : core.Eva != null ? "EVA" : core.IsPiloting ? "Helm" : InteriorView && core.Instance != null ? "Ship interior" : "Flight view";
+        speed.Text = !preview && core.CurrentPresentedShip is { } ship ? $"{Math.Sqrt(ship.Vx * ship.Vx + ship.Vy * ship.Vy):F1} m/s" : "— m/s";
+        heading.Text = !preview && core.CurrentPresentedShip is { } current ? $"{((current.Heading * 180 / Math.PI) % 360 + 360) % 360:F0}°" : "—°";
         var snapshot = InventoryPresentation.Read(core, preview);
         var oldHealthVisible = healthRow.Visible; var oldWeaponVisible = weaponEnergyRow.Visible; var oldPowerVisible = powerState.Visible;
         healthRow.Visible = health.Visible = !preview && core.Vitals != null;
@@ -549,17 +631,28 @@ public partial class SiderealUi : Control
             $"Speed: {speed.Text}\nHeading: {heading.Text}\nCarry mass: {mass.Text}" +
             (weaponEnergyRow.Visible ? $"\nWeapon energy: {weaponEnergyValue.Text}" : "") +
             (powerState.Text.Length > 0 ? $"\n{powerState.Text}" : "");
-        actionHint.Text = occupied ? "W / S thrust   A / D turn   E leave station" : "WASD move   Shift sprint   E pilot station";
-        seatButton.Visible = shell && !preview && character?.Connected == true;
-        seatButton.Disabled = !seatButton.Visible;
-        seatButton.Text = occupied ? "E   Leave control station" : "E   Pilot station";
+        actionHint.Text = occupied ? "W / S thrust   A / D turn   X cruise   E leave station" : "WASD move   Shift sprint   E use";
+        var interaction = core.Interaction;
+        seatButton.Visible = shell && !preview && character?.Connected == true && interaction != null;
+        seatButton.Disabled = interaction?.Enabled != true || core.GameplayPending;
+        seatButton.Text = "E   " + (interaction?.Label ?? "Use");
 
         var text = notice ?? message;
         var oldNotice = status.Text;
         status.Text = preview ? (worldPreview ? "Scene preview · Sample items · No game session" : "UI preview · Sample items · Game actions disabled") : text;
         // Routine state lives in context and telemetry. Rejections and connection errors remain visible.
-        footer.Visible = preview || (login.Visible ? notice != null : !shell || notice != null || text != "Connected. Server authority active.");
-        inventory.Refresh(); equipment.Refresh(); hotbar.Refresh();
+        footer.Visible = shell && (preview || notice != null || text != "Connected. Server authority active.");
+        var matchingAdmission=core.Connection?.Db.OwnWorldAdmission.Iter().Any(a=>a.CharacterId==character?.Id&&a.ShipId==character?.ShipId)==true;
+        var ownedDeckAccess=core.Connection?.Db.OwnGameShipAccess.Iter().Any(a=>a.CharacterId==character?.Id&&a.InstanceId==core.Location?.InstanceId)==true;
+        var review=waitingForEntry&&core.Location!=null&&!matchingAdmission&&!ownedDeckAccess;
+        entryReturn.Visible=review&&core.CanReturnFromReview;entryReturn.Disabled=core.GameplayPending;
+        entryLeaveSeat.Visible=review&&core.IsPiloting;entryLeaveSeat.Disabled=core.GameplayPending||core.RecoveringPilot;
+        entryRetry.Visible=crew.Visible&&waitingForEntry&&entryJoinAttempted&&!core.SharedJoinPending&&core.SharedJoinPhase is "error" or "blocked" or "idle";
+        entryRetry.Disabled=core.SharedJoinPending||core.Connection==null;
+        entryDiscard.Visible=crew.Visible&&core.SharedJoinReviewRequired;entryDiscard.Disabled=core.SharedJoinPending;
+        crewNotice.Text=waitingForEntry?entryAwaitingReceipt?core.EnterMessage:review?"Return from construction review to enter the shared system.":core.SharedJoinMessage.Length>0?core.SharedJoinMessage:character?.Connected!=true?"Preparing character…":core.Ship==null?"No ship assigned. Waiting for your vessel.":"Loading shared-system views…":text;
+        crewNotice.Visible=crew.Visible&&(waitingForEntry||core.SharedJoinReviewRequired||crewNotice.Text!="Connected. Server authority active.");
+        inventory.Refresh(); equipment.Refresh();hotbar.AssignmentItemId=inventoryWindow.Visible||storageWindows.Values.Any(w=>w.Visible)?inventory.SelectedItemId:"";hotbar.Refresh(); menu.Refresh();foreach(var window in storageWindows.Values.ToArray())window.Refresh(); RefreshGameplayPanels(preview);
         if (!demo && !WorldVisible && !waitingForEntry) HideGameWindows();
         if (shellChanged || oldHealthVisible != healthRow.Visible || oldWeaponVisible != weaponEnergyRow.Visible || oldPowerVisible != powerState.Visible)
         { if (shellChanged) menu.Hide(); QueueLayout(); }
@@ -568,7 +661,19 @@ public partial class SiderealUi : Control
 
     public bool HandleKey(Key key)
     {
-        if (key == Key.Escape && menu.Visible) { menu.Hide(); core.ReleaseControls(); return true; }
+        if (key == Key.F3) { core.ReleaseControls(); menu.SelectTab("Graphics"); menu.Show(); menu.BringToFront(); return true; }
+        if (key == Key.F6) { if (GetViewport().GuiGetFocusOwner() != null) GetViewport().GuiReleaseFocus(); else if(menuButton.IsVisibleInTree())menuButton.GrabFocus();else if(loginButton.IsVisibleInTree())loginButton.GrabFocus();else enterButton.GrabFocus(); return true; }
+        if (key == Key.Escape)
+        {
+            core.ReleaseControls();
+            if (ItemDrag.Current != null || GetViewport().GuiIsDragging()) { GetViewport().GuiCancelDrag(); ItemDrag.Current = null; return true; }
+            if (menu.Visible) { menu.Hide(); GetViewport().GuiReleaseFocus(); return true; }
+            var top = windows.Where(w=>w.Visible).OrderByDescending(w=>w.ZIndex).FirstOrDefault();
+            if (top != null) { top.Close(); GetViewport().GuiReleaseFocus(); return true; }
+            menu.Show(); menu.BringToFront(); return true;
+        }
+        if (key == Key.N && WorldVisible && GetViewport().GuiGetFocusOwner() is not (LineEdit or TextEdit)) { ToggleNavigation(); return true; }
+        if (key == Key.Z && WorldVisible && GetViewport().GuiGetFocusOwner() is not (LineEdit or TextEdit)) { ToggleGroundLabels(); return true; }
         if (key is not (Key.I or Key.C)) return false;
         if (GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit) return false;
         if (!demo && !WorldVisible) return false;
@@ -580,16 +685,28 @@ public partial class SiderealUi : Control
         if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
         for (Node? node = GetViewport().GuiGetHoveredControl(); node != null && node != this; node = node.GetParent())
             if (node is DockWindow window) { window.BringToFront(); break; }
-        if (menu.Visible && !menu.GetGlobalRect().HasPoint(GetGlobalMousePosition()) && !menuButton.GetGlobalRect().HasPoint(GetGlobalMousePosition())) menu.Hide();
+
+    }
+
+    public override void _UnhandledInput(InputEvent input)
+    {
+        if(input is InputEventJoypadButton or InputEventJoypadMotion)
+        {
+            if(input.IsActionPressed("ui_cancel")){HandleKey(Key.Escape);GetViewport().SetInputAsHandled();}
+            else if(GetViewport().GuiGetFocusOwner()==null&&(input.IsActionPressed("ui_accept")||input.IsActionPressed("ui_up")||input.IsActionPressed("ui_down")||input.IsActionPressed("ui_left")||input.IsActionPressed("ui_right")))
+            {HandleKey(Key.F6);GetViewport().SetInputAsHandled();}
+        }
     }
 
     public override void _ExitTree()
     {
+        NativePreferences.Current.Changed -= PreferencesChanged;
         palette.Changed -= ApplyTheme;
         GetViewport().SizeChanged -= QueueLayout;
         hud.MinimumSizeChanged -= QueueLayout;
         actionFrame.MinimumSizeChanged -= QueueLayout;
         header.MinimumSizeChanged -= QueueLayout;
+        login.MinimumSizeChanged -= QueueLayout;
         status.MinimumSizeChanged -= QueueLayout;
     }
 }
