@@ -87,11 +87,13 @@ public partial class SiderealUi : Control
     public bool BlocksCameraInput => !WorldVisible || menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(w=>w.Visible&&w.InteractionActive) || GetViewport().GuiIsDragging() || PointerOverUi();
     public bool GameplayShortcutBlocked => menu.Visible || inventory.InteractionActive || equipment.PreviewInteractionActive || windows.Exists(window => window.Visible && window.InteractionActive);
     public bool WorldVisible => !demo && entered && core.Character?.Connected == true;
-    public void CancelInteractions()
+    public void CancelInteractions(bool preserveKeyboardFocus = false)
     {
         foreach(var window in windows)window.CancelInteraction();
         equipment.CancelPreviewInteraction();
-        GetViewport().GuiCancelDrag();itemInteraction?.CancelLocal();GetViewport().GuiReleaseFocus();core.ReleaseControls();
+        GetViewport().GuiCancelDrag();itemInteraction?.CancelLocal();
+        if (!preserveKeyboardFocus) GetViewport().GuiReleaseFocus();
+        core.ReleaseControls();
     }
     public bool BlocksWorldInput => !WorldVisible || menu.Visible || windows.Exists(w => w.Visible && w.InteractionActive) ||
         inventory.InteractionActive || equipment.PreviewInteractionActive || GetViewport().GuiIsDragging() || GetViewport().GuiGetFocusOwner() != null ||

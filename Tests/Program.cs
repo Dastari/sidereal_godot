@@ -97,12 +97,16 @@ try
     var preferenceFile = Path.Combine(preferenceDirectory, "presentation.json");
     var preferences = new NativePreferences();
     Require(!preferences.Load(preferenceFile), "A missing profile was reported as loaded");
-    preferences.Set(new NativePreferencesSnapshot { Brightness = 1.3, Gamma = 1.8, PanelOpacity = .63, UiScale = 1.25, Shadows = false });
+    preferences.Set(new NativePreferencesSnapshot { Brightness = 1.3, Gamma = 1.8, PanelOpacity = .63, UiScale = 1.25, Fullscreen = true, Shadows = false });
     var reloaded = new NativePreferences();
     Require(reloaded.Load(preferenceFile) && reloaded.Snapshot == preferences.Snapshot, "Display preferences did not round-trip exactly");
     reloaded.ResetGraphics();
     Require(reloaded.Snapshot.Brightness == 1 && reloaded.Snapshot.Gamma == 1 && reloaded.Snapshot.Shadows &&
-        reloaded.Snapshot.UiScale == 1.25 && reloaded.Snapshot.PanelOpacity == .63, "Graphics reset changed independent UI preferences");
+        reloaded.Snapshot.UiScale == 1.25 && reloaded.Snapshot.PanelOpacity == .63 && reloaded.Snapshot.Fullscreen, "Graphics reset changed independent UI preferences");
+    reloaded.ResetDisplay();
+    Require(!reloaded.Snapshot.Fullscreen && reloaded.Snapshot.UiScale == 1 && reloaded.Snapshot.PanelOpacity == .94, "Display reset did not restore windowed defaults");
+    File.WriteAllText(preferenceFile, "{\"Version\":1,\"Presentation\":{\"UiScale\":1.25}}");
+    Require(reloaded.Load(preferenceFile) && !reloaded.Snapshot.Fullscreen && reloaded.Snapshot.UiScale == 1.25, "Legacy display profile fullscreen default was incompatible");
     File.WriteAllText(preferenceFile, "{corrupt");
     Require(!reloaded.Load(preferenceFile) && reloaded.Snapshot == new NativePreferencesSnapshot(), "A corrupt profile retained stale prior settings");
     var normalized = new NativePreferencesSnapshot { Brightness = double.NaN, Gamma = 900, Saturation = -1, UiScale = 6, MsaaSamples = 99, LocalLightLimit = "999" }.Normalized();

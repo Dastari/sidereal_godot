@@ -58,13 +58,19 @@ public partial class SystemMenu : DockWindow
         controls.AddChild(new HSeparator());
         foreach (var line in new[] { "WASD   Walk relative to the camera · Shift sprint", "E   Use · control seat · leave seat",
             "W / S thrust · A / D turn · X cruise", "Mouse aim · Left click fire · R reload", "1–5   Assigned items · 9 / 0 quick inspection",
-            "Right-drag orbit · Wheel zoom", "B   Rescue beacon · X suit hold / free", "Escape   Cancel / close / menu", "F3   Graphics · F6 interface focus" })
+            "Right-drag orbit · Wheel zoom", "B   Rescue beacon · X suit hold / free", "Escape   Cancel / close / menu", "F3   Graphics · F6 interface focus", "F11 / Alt+Enter   Fullscreen" })
             controls.AddChild(Body(line, 14));
         var resetCamera = ActionButton("Reset camera", () => ResetCamera?.Invoke()); controls.AddChild(resetCamera);
         bindings.Add(() => resetCamera.Disabled = ResetCamera == null);
 
         var display = panels["Display"];
         display.AddChild(Body("Interface preferences are saved on this computer."));
+        var fullscreen = Toggle(display, "Fullscreen   F11 / Alt+Enter", p => p.Fullscreen, (p,v) => p with { Fullscreen = v });
+        bindings.Add(() =>
+        {
+            fullscreen.Disabled = DisplayServer.GetName() == "headless" || GetWindow().IsEmbedded();
+            fullscreen.TooltipText = fullscreen.Disabled ? "Use a separate game window to enable fullscreen." : "F11 or Alt+Enter returns to your previous window.";
+        });
         Slider(display, "Panel opacity", .3, 1, .01, p => p.PanelOpacity, (p,v) => p with { PanelOpacity = v });
         Slider(display, "UI scale", .75, 1.5, .05, p => p.UiScale, (p,v) => p with { UiScale = v });
         Toggle(display, "Reduced motion", p => p.ReducedMotion, (p,v) => p with { ReducedMotion = v });
@@ -154,10 +160,11 @@ public partial class SystemMenu : DockWindow
         slider.ValueChanged+=value=> {if(!synchronizing)NativePreferences.Current.Set(set(NativePreferences.Current.Snapshot,value));};
         bindings.Add(()=> {var v=get(NativePreferences.Current.Snapshot);caption.Text=$"{label}   {v:P0}";slider.Value=v;});
     }
-    private void Toggle(VBoxContainer panel,string label,Func<NativePreferencesSnapshot,bool> get,Func<NativePreferencesSnapshot,bool,NativePreferencesSnapshot> set)
+    private CheckBox Toggle(VBoxContainer panel,string label,Func<NativePreferencesSnapshot,bool> get,Func<NativePreferencesSnapshot,bool,NativePreferencesSnapshot> set)
     {
         var button=new CheckBox {Text=label,CustomMinimumSize=new Vector2(0,34)};panel.AddChild(button);
         button.Toggled+=v=> {if(!synchronizing)NativePreferences.Current.Set(set(NativePreferences.Current.Snapshot,v));};bindings.Add(()=>button.ButtonPressed=get(NativePreferences.Current.Snapshot));
+        return button;
     }
     private void Choice(VBoxContainer panel,string label,string[] values,Func<NativePreferencesSnapshot,string> get,Func<NativePreferencesSnapshot,string,NativePreferencesSnapshot> set)
     {
