@@ -1,0 +1,147 @@
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Sidereal.Native;
+using Sidereal.Native.Editor;
+
+internal static class Program
+{
+    private sealed class Socket : IObserverSocket
+    {
+        public long RowCount { get; set; }
+        public int Ticks, Closes;
+        public bool ThrowTick;
+        public Action Connected = null!, Subscribing = null!, Applied = null!, Disconnected = null!;
+        public Action<ObserverFailure> Failed = null!;
+        public void Tick() { Ticks++; if (ThrowTick) throw new InvalidOperationException("secret must not surface"); }
+        public void Close() { Closes++; }
+    }
+    private sealed class Factory : IObserverSocketFactory
+    {
+        public Socket Latest = null!;
+        public int Opens;
+        public string? Token;
+        public IObserverSocket Open(ClientSettings settings, string? originalProviderToken, Action connected,
+            Action subscribing, Action applied, Action<ObserverFailure> failed, Action disconnected)
+        {
+            Opens++; Token = originalProviderToken;
+            return Latest = new() { Connected = connected, Subscribing = subscribing, Applied = applied, Failed = failed, Disconnected = disconnected };
+        }
+    }
+    private static int assertions;
+    private static void Require(bool value, string reason) { assertions++; if (!value) throw new Exception(reason); }
+    private static void Main(string[] args)
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        // Read the same public configuration used by the actual project; test-only fixture endpoint.
+        var live = ClientSettings.Parse(File.ReadAllText(Path.Combine(root, "client-settings.json")));
+        var fixture = live with { GameOrigin = "https://sidereal.tail7a58a6.ts.net:8448", Database = "editor-policy-test-smoke" };
+        var isolated = new ObserverProfile("fixture", fixture);
+        Require(isolated.IsFixture && !isolated.IsProduction, "explicit fixture classification");
+        Require(new ObserverProfile("live", live).IsProduction, "live is prominently production");
+        Require(SdkObserverSocketFactory.Query == "SELECT * FROM own_characters", "only safe filtered view");
+        var factory = new Factory(); double clock = 0;
+        using (var observer = new WorldObserver(factory, now: () => clock))
+        {
+            observer.Connect(isolated); var first = factory.Latest;
+            Require(factory.Token == null && factory.Opens == 1, "fixture has no provider token or gameplay Core");
+            Require(observer.Snapshot.Status == ObserverStatus.Connecting, "connecting visible");
+            first.Connected(); first.Subscribing(); observer.Tick();
+            Require(first.Ticks == 1 && observer.Snapshot.Status == ObserverStatus.Subscribing, "one main thread pump");
+            first.RowCount = 3; first.Applied(); observer.Tick();
+            Require(observer.Snapshot.Status == ObserverStatus.Live && observer.Snapshot.RowCount == 3, "applied actual cache count");
+            first.RowCount = 0; observer.Tick();
+            Require(observer.Snapshot.Status == ObserverStatus.Live && observer.Snapshot.RowCount == 0, "legitimate zero is Live");
+            observer.Disconnect();
+            Require(first.Closes == 1 && observer.Snapshot.RowCount == 0 && !observer.Snapshot.Busy, "disconnect releases and clears");
+            first.Applied(); first.Failed(ObserverFailure.Subscription); observer.Tick();
+            Require(observer.Snapshot.Status == ObserverStatus.Disconnected, "late old callbacks cannot resurrect state");
+            observer.Connect(isolated); var second = factory.Latest; second.Applied(); observer.Tick();
+            first.Disconnected(); observer.Tick();
+            Require(observer.Snapshot.Status == ObserverStatus.Live, "old connection cannot close successor");
+            second.Failed(ObserverFailure.Subscription); observer.Tick();
+            Require(second.Closes == 1 && observer.Snapshot.Status == ObserverStatus.Error && observer.Snapshot.RowCount == 0, "subscription error drops cache");
+            observer.Connect(isolated); var third = factory.Latest; clock += 21; observer.Tick();
+            Require(third.Closes == 1 && observer.Snapshot.Status == ObserverStatus.Error, "connection timeout closes socket");
+            observer.Connect(isolated); var fourth = factory.Latest; fourth.ThrowTick = true; observer.Tick();
+            Require(fourth.Closes == 1 && !observer.Snapshot.Message.Contains("secret"), "tick exception closes with bounded message");
+            Exception? wrongThread = null;
+            var worker = new Thread(() => { try { observer.Tick(); } catch (Exception e) { wrongThread = e; } });
+            worker.Start(); worker.Join();
+            Require(wrongThread is InvalidOperationException, "concurrent worker pumping refused");
+            observer.Connect(isolated); var fifth = factory.Latest; observer.Dispose(); observer.Dispose(); fifth.Applied(); observer.Tick();
+            Require(fifth.Closes == 1 && observer.Snapshot.Status == ObserverStatus.Disconnected, "disable/reload idempotent disposal");
+        }
+        var pending = new TaskCompletionSource<Credential>(); CancellationToken cancel = default;
+        Action<string>? browser = null;
+        using (var observer = new WorldObserver(factory, (settings, open, token) => { browser = open; cancel = token; return pending.Task; }))
+        {
+            observer.Connect(new("live", live));
+            browser!("https://provider.example/authorize");
+            Require(observer.TryTakeBrowserUrl(out _), "browser action queued to editor thread");
+            observer.Disconnect(); Require(cancel.IsCancellationRequested, "disconnect cancels sign-in");
+            var opens = factory.Opens;
+            browser("https://provider.example/late");
+            pending.SetResult(new("provider-original", "refresh-secret", "nonce", "subject", DateTimeOffset.UtcNow.AddMinutes(5)));
+            observer.Tick();
+            Require(factory.Opens == opens && !observer.TryTakeBrowserUrl(out _), "late auth/browser cannot open socket");
+        }
+        using (var observer = new WorldObserver(factory, (_, _, _) => Task.FromResult(new Credential("original-id-token", "private-refresh", "nonce", "subject", DateTimeOffset.UtcNow.AddMinutes(5)))))
+        {
+            observer.Connect(new("live", live)); observer.Tick();
+            Require(factory.Token == "original-id-token", "original provider token passes unchanged");
+            factory.Latest.Applied(); observer.Tick();
+            Require(observer.Snapshot.Status == ObserverStatus.Live, "provider proof-free subscription can apply");
+        }
+        var scratch = Path.Combine(Path.GetTempPath(), "sidereal-editor-policy-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            File.WriteAllText(Path.Combine(scratch, "client-settings.json"), JsonSerializer.Serialize(live));
+            File.WriteAllText(Path.Combine(scratch, "client-settings.network-test.json"), JsonSerializer.Serialize(live));
+            var profiles = ObserverProfiles.Load(scratch);
+            Require(profiles.Items.Count == 1 && profiles.Notice.Length > 0, "non-fixture override cannot become anonymous");
+            File.WriteAllText(Path.Combine(scratch, "client-settings.network-test.json"), JsonSerializer.Serialize(fixture));
+            profiles = ObserverProfiles.Load(scratch);
+            Require(profiles.Items.Count == 2 && profiles.Items[0].IsFixture, "explicit valid fixture first");
+            File.WriteAllText(Path.Combine(scratch, "client-settings.network-test.json"), JsonSerializer.Serialize(fixture with { Issuer = "https://other-provider.example/realm" }));
+            profiles = ObserverProfiles.Load(scratch);
+            Require(profiles.Items.Count == 1 && profiles.Notice.Length > 0, "fixture cannot swap Dastari provider");
+            foreach (var invalid in new[] {
+                live with { GameOrigin = "http://untrusted.example" }, live with { Issuer = "http://untrusted.example" },
+                live with { ClientId = "other-client" }, live with { CallbackPort = 1234 }, live with { Database = " " } })
+            {
+                File.WriteAllText(Path.Combine(scratch, "client-settings.json"), JsonSerializer.Serialize(invalid));
+                profiles = ObserverProfiles.Load(scratch);
+                Require(profiles.Items.Count == 0 && profiles.Notice.Length > 0, "untyped editor reader retains canonical settings validation");
+            }
+            File.WriteAllText(Path.Combine(scratch, "client-settings.json"), "{}");
+            Require(ObserverProfiles.Load(scratch).Items.Count == 0, "missing required editor fields are rejected");
+            File.WriteAllText(Path.Combine(scratch, "client-settings.json"), JsonSerializer.Serialize(live).Replace(":43817", ":43817.5"));
+            Require(ObserverProfiles.Load(scratch).Items.Count == 0, "fractional callback is rejected");
+        }
+        finally { Directory.Delete(scratch, true); }
+        Console.WriteLine($"World editor observer: {assertions} independent lifecycle/profile assertions passed.");
+        if (args.Length > 0)
+        {
+            if (args.Length != 2 || args[0] != "--fixture-observer") throw new ArgumentException("Explicit fixture settings required.");
+            var configured = ClientSettings.Parse(File.ReadAllText(args[1]));
+            if (!configured.IsIsolatedFixture) throw new InvalidOperationException("Live world observer tests are forbidden.");
+            for (var cycle = 0; cycle < 3; cycle++)
+            {
+                using var real = new WorldObserver();
+                real.Connect(new("Explicit isolated fixture", configured));
+                var end = Environment.TickCount64 + 25000;
+                while (real.Snapshot.Status is not (ObserverStatus.Live or ObserverStatus.Error) && Environment.TickCount64 < end)
+                { real.Tick(); Thread.Sleep(10); }
+                Require(real.Snapshot.Status == ObserverStatus.Live, "actual filtered SDK subscription applies: " + real.Snapshot.Message);
+                Console.WriteLine($"Isolated observer cycle{cycle + 1}: Live; own_characters count={real.Snapshot.RowCount}.");
+                real.Disconnect(); real.Tick();
+                Require(real.Snapshot.Status == ObserverStatus.Disconnected && real.Snapshot.RowCount == 0, "actual disconnect clears cache");
+            }
+            Console.WriteLine("Isolated observer SDK: three connect/applied/disconnect cycles passed without actor creation or reducer calls.");
+        }
+    }
+}

@@ -218,6 +218,11 @@ def source_bundle(downloads=DOWNLOADS):
             for path in sorted((PROJECT / directory).rglob('*')):
                 if path.is_file():
                     package.write(path, 'Sidereal/' + str(path.relative_to(PROJECT)))
+        addon = 'addons/sidereal_world_editor'
+        addon_names = subprocess.check_output(['git', 'ls-files', '-z', '--', addon], cwd=PROJECT, text=True).split('\0')
+        for name in addon_names:
+            if name == addon + '/plugin.cfg' or name.endswith(('.cs', '.cs.uid')):
+                package.write(PROJECT / name, 'Sidereal/' + name)
         for path in sorted((PROJECT / 'Bindings').rglob('*.cs')):
             package.write(path, 'Sidereal/' + str(path.relative_to(PROJECT)))
         package.write(PROJECT / 'Bindings/.gdignore', 'Sidereal/Bindings/.gdignore')

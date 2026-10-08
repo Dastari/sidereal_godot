@@ -22,13 +22,18 @@ public sealed record ClientSettings(string GameOrigin, string Database, string I
     {
         var config = JsonSerializer.Deserialize<ClientSettings>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new InvalidOperationException("Missing client settings.");
-        var origin = new Uri(config.GameOrigin);
+        return config.Validate();
+    }
+    // Tools can reuse the exact policy without reflection-based JSON metadata for a collectible type.
+    public ClientSettings Validate()
+    {
+        var origin = new Uri(GameOrigin);
         if (origin.Scheme != "https" && !(origin.Scheme == "http" && origin.IsLoopback))
             throw new InvalidOperationException("Use HTTPS for the game server.");
-        if (new Uri(config.Issuer).Scheme != "https" || string.IsNullOrWhiteSpace(config.Database) ||
-            config.ClientId != "sidereal-game" || config.CallbackPort != 43817)
+        if (new Uri(Issuer).Scheme != "https" || string.IsNullOrWhiteSpace(Database) ||
+            ClientId != "sidereal-game" || CallbackPort != 43817)
             throw new InvalidOperationException("Invalid native sign-in settings.");
-        return config;
+        return this;
     }
 }
 
