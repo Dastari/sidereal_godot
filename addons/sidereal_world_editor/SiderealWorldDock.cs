@@ -10,7 +10,7 @@ public partial class SiderealWorldDock : EditorDock
     private ObserverProfiles? profiles;
     private OptionButton environments = null!;
     private Label boundary = null!, endpoint = null!, database = null!, authentication = null!;
-    private Label status = null!, count = null!, message = null!, notice = null!;
+    private Label status = null!, connection = null!, count = null!, message = null!, notice = null!;
     private Button connect = null!, disconnect = null!;
     private ObserverSnapshot? displayed;
     private int selected = -1;
@@ -48,7 +48,8 @@ public partial class SiderealWorldDock : EditorDock
         connect.Pressed += ConnectSelected;
         disconnect.Pressed += () => { observer?.Disconnect(); Refresh(); };
         body.AddChild(new HSeparator());
-        status = Text("Disconnected"); count = Text("Cached own characters: 0");
+        status = Text("Disconnected"); connection = Text("Connection: Disconnected");
+        count = Text("Cached own characters: 0");
         Text("Subscription: own_characters\nActor-filtered count only");
         message = Text("");
         body.AddChild(new HSeparator());
@@ -87,6 +88,8 @@ public partial class SiderealWorldDock : EditorDock
         if (snapshot == displayed) return;
         displayed = snapshot;
         status.Text = "Status: " + snapshot.Status;
+        connection.Text = "Connection: " + (snapshot.Status is ObserverStatus.Connected or ObserverStatus.Subscribing or ObserverStatus.Live
+            ? "Connected" : snapshot.Status == ObserverStatus.Connecting ? "Connecting" : "Disconnected");
         count.Text = "Cached own characters: " + snapshot.RowCount;
         message.Text = snapshot.Message;
         connect.Disabled = snapshot.Busy || selected < 0;
