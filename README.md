@@ -1,7 +1,7 @@
 # Sidereal Godot
 
 Native Godot frontend for the existing authoritative Sidereal SpacetimeDB world.
-The 0.4.4 evaluation implements Dastari browser sign-in, persistent character entry, replicated
+The 0.4.5 source evaluation implements Dastari browser sign-in, persistent character entry, replicated
 decks, walking, piloting, cruise, contextual interaction, combat input and EVA controls.
 The responsive blue-glass UI includes Tetris inventory, equipment, tooltips, ground pickup,
 scoped storage, draggable/resizable windows and saved theme, display and graphics preferences.
@@ -33,10 +33,10 @@ asset streaming and Windows/GPU acceptance remain
 open. The [parity contract](https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity)
 records source pins, verified behavior and remaining work.
 
-Until the initial PR is merged, clone the implementation branch explicitly:
+To review the stacked 0.4.5 source changes, clone the window implementation branch explicitly:
 
 ```powershell
-git clone --branch feat/native-spacetimedb-client https://github.com/Dastari/sidereal_godot.git
+git clone --branch feat/responsive-window-fullscreen https://github.com/Dastari/sidereal_godot.git
 cd sidereal_godot
 ```
 
@@ -45,7 +45,8 @@ import the root `project.godot`. Connect Tailscale to access the configured serv
 project, and press Play. The standard Godot editor cannot compile this C# client.
 The default game endpoint is `https://sidereal.tail7a58a6.ts.net:8447`; authentication uses
 `https://auth.dastari.net/realms/dastari`. The editor opens your local files; the running game connects
-to the server. [Windows downloads](https://sidereal.tail7a58a6.ts.net:8446) include the runtime.
+to the server. [Windows downloads](https://sidereal.tail7a58a6.ts.net:8446) include the currently published runtime;
+that release is qualified separately from this 0.4.5 source branch.
 
 AI changes and local editor work share Git branches. Save and commit editor changes before pulling.
 The source ZIP is an editor snapshot; clone Git to use the test and lifecycle scripts below.
@@ -60,7 +61,10 @@ X for cruise or EVA suit hold, V for combat, mouse/left click to aim/fire, and R
 In inventory, click an item to hold it, R rotates, and a second click places it. Right click or
 Escape cancels holding; double click equips/stows and Shift click transfers to disclosed storage.
 I opens inventory, C character, N navigation, Tab deck/flight view, Z loot labels,
-and Escape cancels or opens the menu. Right drag orbits and the wheel zooms outside UI panels.
+and Escape cancels or opens the menu. F11 or Alt+Enter toggles fullscreen, including while a text
+field is focused; the Display tab also has a Fullscreen checkbox. Resizing cancels local held items
+and active panel gestures. Panels recover preferred layouts after the window grows; compact
+inventory bodies require scrolling. Right drag orbits and the wheel zooms outside UI panels.
 For a real Dastari/Tailscale integration test against the separate fixture:
 
 ```powershell
