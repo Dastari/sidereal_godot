@@ -1,0 +1,280 @@
+{
+  "schema": "sidereal.native-camera-golden.v1",
+  "sourceRevision": "a35632deedf210cf43f64c43cb741d841f4a1ce0",
+  "scope": "Public canonical deck vertices and source-executed presentation math; no world state",
+  "sources": [
+    {
+      "source": "packages/render/src/construction-instance.ts",
+      "sha256": "3e35be4235392c34b24fcb83153b2f970015919eaa0ab27e3edbaab4c2422699",
+      "bytes": 17302
+    },
+    {
+      "source": "packages/render/src/index.ts",
+      "sha256": "25d575340d09618dfa405eca3414bcaf0c218625bea5f146d9c5399ce2aeb321",
+      "bytes": 65380
+    },
+    {
+      "source": "packages/render/src/camera.ts",
+      "sha256": "5eb785d467dc5c64a9b7d9d35de6ed32d58f4bf75e72f2bc5b36261c8e82610d",
+      "bytes": 2793
+    }
+  ],
+  "fixtures": [
+    {
+      "prefabId": "fed.s.wren",
+      "revision": 9,
+      "prefabSha256": "ecdb038c1b9333780c719aa3e19a8c677852c99cf4dab86421a2934aa60937e5",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -1.0,
+      "halfExtent": 5.0,
+      "initialDeckZoom": 7.5,
+      "initialFlightZoom": 7.5
+    },
+    {
+      "prefabId": "fed.m.crest",
+      "revision": 4,
+      "prefabSha256": "d0816b972d7fa3f1bf4f3498d5681d44b7a0ff9f3c6d60d487480e647b32f890",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 12.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 18.0
+    },
+    {
+      "prefabId": "fed.m.meridian",
+      "revision": 3,
+      "prefabSha256": "91773eae04acb358093b39c893a1a98c4ce299a7a3984b63c77c5443dd98958b",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 13.5,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 20.25
+    },
+    {
+      "prefabId": "fed.l.bastion",
+      "revision": 4,
+      "prefabSha256": "2b44b421f06925fe5f82e1ae68961d7d64a6a04923d7db31fed54794f80ea7fb",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 18.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 27.0
+    },
+    {
+      "prefabId": "rj.s.jackal",
+      "revision": 3,
+      "prefabSha256": "b6d83dba14511b1cd73ec6f9b52ae026e86b074584b474717473c1b0a1de22b1",
+      "deckId": "deck-0",
+      "centerX": -0.5,
+      "centerY": 0.0,
+      "halfExtent": 5.5,
+      "initialDeckZoom": 8.25,
+      "initialFlightZoom": 8.25
+    },
+    {
+      "prefabId": "rj.m.marauder",
+      "revision": 4,
+      "prefabSha256": "bf00a904e25b2e572a6454a0c93d61e972aecd54b28a3c1032462f8426aebd68",
+      "deckId": "deck-0",
+      "centerX": 0.5,
+      "centerY": -1.0,
+      "halfExtent": 11.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 16.5
+    },
+    {
+      "prefabId": "rj.l.maw",
+      "revision": 4,
+      "prefabSha256": "d788626e77203883c5c34f73f88e92dea5f8d18dcb6f1469c8e3fe8d96f49a16",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -3.0,
+      "halfExtent": 16.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 24.0
+    },
+    {
+      "prefabId": "au.s.lumen",
+      "revision": 3,
+      "prefabSha256": "c7f31e595851c8c707d87f2a5b95018d7ea2b7a10b766f12d73e099cce0ff91b",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -0.5,
+      "halfExtent": 5.0,
+      "initialDeckZoom": 7.5,
+      "initialFlightZoom": 7.5
+    },
+    {
+      "prefabId": "au.m.crescent",
+      "revision": 3,
+      "prefabSha256": "f2cbb3d2332f5a5c9e3bdeb9001b592d0e6f3e82f7a41505b6cf7924d65ccbc5",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -0.5,
+      "halfExtent": 8.5,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 12.75
+    },
+    {
+      "prefabId": "au.l.cathedral",
+      "revision": 3,
+      "prefabSha256": "1d2284dc0ef324cf7ed5009402e62e21f989f81f2eb2c53d49c6e2027447b85f",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -1.0,
+      "halfExtent": 16.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 24.0
+    },
+    {
+      "prefabId": "ind.m.mule",
+      "revision": 3,
+      "prefabSha256": "f5b88737269a3572940f2c5bb82fde57c2df72c384811ec404b3eb818a22d8c0",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 12.5,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 18.75
+    },
+    {
+      "prefabId": "cry.m.shard",
+      "revision": 3,
+      "prefabSha256": "c834b11e752ccfef28b7f20649ef03ba1bf642ab7ea2103ae60fa78602c8f5ed",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": -1.0,
+      "halfExtent": 10.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 15.0
+    },
+    {
+      "prefabId": "fed.m.wayfarer",
+      "revision": 2,
+      "prefabSha256": "f1254c3bfd0b0fb8aa303dcc4d178639f347447a9dd8334696d76e53787f769a",
+      "deckId": "deck-0",
+      "centerX": -0.75,
+      "centerY": 1.0,
+      "halfExtent": 11.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 16.5
+    },
+    {
+      "prefabId": "fed.s.wren-fleet",
+      "revision": 1,
+      "prefabSha256": "2818676a196eb398d36b21060527e3e27c30c8c64b391f8b5cee5cc96b9525bc",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 7.0,
+      "initialDeckZoom": 10.5,
+      "initialFlightZoom": 10.5
+    },
+    {
+      "prefabId": "fed.s.petrel-fleet",
+      "revision": 1,
+      "prefabSha256": "01b5ee041701d58a18883b9e73169409fa169569c7619ac3dc05da25152b39d4",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 9.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 13.5
+    },
+    {
+      "prefabId": "fed.m.wayfarer-fleet",
+      "revision": 1,
+      "prefabSha256": "a986ac38d4ba3c221353821168f8f30469d6e6559a5228dbb476c84572831d95",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 14.5,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 21.75
+    },
+    {
+      "prefabId": "fed.m.heron-fleet",
+      "revision": 1,
+      "prefabSha256": "b0c3824f2a4337cf47314913408441fca4066d9444c02767f58388a660e887a7",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 13.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 19.5
+    },
+    {
+      "prefabId": "fed.l.kestrel-fleet",
+      "revision": 1,
+      "prefabSha256": "16d98d113c921ef16014c8d2a5e628842cd35d69f26ce314563116abdf0b81b4",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 18.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 27.0
+    },
+    {
+      "prefabId": "fed.l.albatross-fleet",
+      "revision": 1,
+      "prefabSha256": "8cc54a029a8244724af6c9531d7b818f613b5922c4b2d89d6f9fee5bb0370b4f",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 0.0,
+      "halfExtent": 21.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 31.5
+    },
+    {
+      "prefabId": "fed.m.wayfarer",
+      "revision": 1,
+      "prefabSha256": "b71bf73252a2884abb557bc23d9d9043872372768743df7315b6548431dac9d3",
+      "deckId": "deck-0",
+      "centerX": 0.0,
+      "centerY": 1.0,
+      "halfExtent": 11.0,
+      "initialDeckZoom": 12,
+      "initialFlightZoom": 16.5
+    }
+  ],
+  "actorWeights": [
+    {
+      "half": 7.5,
+      "overview": 7.5,
+      "expected": 0.6
+    },
+    {
+      "half": 4.75,
+      "overview": 7.5,
+      "expected": 0.8
+    },
+    {
+      "half": 2,
+      "overview": 7.5,
+      "expected": 1
+    },
+    {
+      "half": 12,
+      "overview": 12,
+      "expected": 0.6
+    }
+  ],
+  "zoomEasing": [
+    {
+      "current": 7.5,
+      "target": 2,
+      "dt": 0.016666666666666666,
+      "expected": 6.5030191419289
+    },
+    {
+      "current": 16.5,
+      "target": 40,
+      "dt": 0.1,
+      "expected": 32.92193602006326
+    }
+  ]
+}

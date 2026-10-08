@@ -1,0 +1,930 @@
+{
+  "schema": 1,
+  "sourceCommit": "a35632deedf210cf43f64c43cb741d841f4a1ce0",
+  "sourceFiles": {
+    "packages/render/src/index.ts": "25d575340d09618dfa405eca3414bcaf0c218625bea5f146d9c5399ce2aeb321",
+    "packages/render/src/crew/pose-integration-motion.ts": "50f19938a52fad284e47b319c8b2323a0ac7afe810b6ab85bb2d032aadf2374b",
+    "packages/render/src/crew/voxel-crew.ts": "f31ee7f2cc04168b5c0889ac294cf9377ec189d2b686f2e95dde63a2aec64469"
+  },
+  "extractedBlocks": {
+    "posePlacementHeading": {
+      "source": "packages/render/src/crew/pose-integration-motion.ts",
+      "startLine": 1,
+      "endLine": 28,
+      "bytes": 976,
+      "sha256": "069fa7a891f4e4cb30a2926c648b578a22a135eed039d9e627b63050971a3438"
+    },
+    "ownBodyYaw": {
+      "source": "packages/render/src/index.ts",
+      "startLine": 1116,
+      "endLine": 1125,
+      "bytes": 387,
+      "sha256": "0c6bceed52e3c11e6a5c0f0fa3bc164e68e4dca6d915678d80843a6fd399c0f7"
+    },
+    "freshCrewPlacement": {
+      "source": "packages/render/src/crew/voxel-crew.ts",
+      "startLine": 169,
+      "endLine": 170,
+      "bytes": 83,
+      "sha256": "782a6340137e08c5080ca62a072984c14351645cc9b6760c67d23bb96f83b5f6"
+    }
+  },
+  "generatorPolicy": "Exact source own-avatar-facing block and posePlacementHeading plus fresh crew-placement creation; only fixtures/transform API stand-ins are authored. No C# helper or translated algorithm generates expectations.",
+  "cases": [
+    {
+      "name": "hidden-flight-turn-stop-retention",
+      "initialYaw": 0,
+      "note": "Visibility never gates the source own-facing block.",
+      "steps": [
+        {
+          "movementHeading": 0.8
+        },
+        {
+          "interior": false,
+          "movementHeading": -1.2
+        },
+        {
+          "interior": false
+        },
+        {
+          "interior": false
+        },
+        {
+          "interior": true
+        }
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 0.8
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -0.8,
+          "arguments": {
+            "travel": 0.8,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false,
+            "movementHeading": -1.2
+          },
+          "beforeYaw": -0.8,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": -1.2,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false
+          },
+          "beforeYaw": 1.2,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false
+          },
+          "beforeYaw": 1.2,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": true
+          },
+          "beforeYaw": 1.2,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "turns-while-hidden-and-returns-moving",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "movementHeading": 0.5
+        },
+        {
+          "interior": false,
+          "movementHeading": 1.5
+        },
+        {
+          "interior": false,
+          "movementHeading": -2.5
+        },
+        {
+          "interior": true,
+          "movementHeading": -0.3
+        },
+        {}
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 0.5
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -0.5,
+          "arguments": {
+            "travel": 0.5,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false,
+            "movementHeading": 1.5
+          },
+          "beforeYaw": -0.5,
+          "expectedYaw": -1.5,
+          "arguments": {
+            "travel": 1.5,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false,
+            "movementHeading": -2.5
+          },
+          "beforeYaw": -1.5,
+          "expectedYaw": 2.5,
+          "arguments": {
+            "travel": -2.5,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": true,
+            "movementHeading": -0.3
+          },
+          "beforeYaw": 2.5,
+          "expectedYaw": 0.3,
+          "arguments": {
+            "travel": -0.3,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": 0.3,
+          "expectedYaw": 0.3,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "accepted-aim-overrides-travel",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "movementHeading": 0.8,
+          "combat": {
+            "active": true,
+            "angle": 0.4
+          }
+        },
+        {
+          "interior": false,
+          "movementHeading": -1.2,
+          "combat": {
+            "active": true,
+            "angle": -2.2
+          }
+        },
+        {
+          "combat": {
+            "active": true,
+            "angle": 0.27
+          }
+        },
+        {
+          "combat": {
+            "active": false,
+            "angle": 2.8
+          }
+        },
+        {
+          "movementHeading": -1.4,
+          "combat": {
+            "active": false,
+            "angle": 2.8
+          }
+        }
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 0.8,
+            "combat": {
+              "active": true,
+              "angle": 0.4
+            }
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -0.4,
+          "arguments": {
+            "travel": 0.8,
+            "aim": 0.4,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false,
+            "movementHeading": -1.2,
+            "combat": {
+              "active": true,
+              "angle": -2.2
+            }
+          },
+          "beforeYaw": -0.4,
+          "expectedYaw": 2.2,
+          "arguments": {
+            "travel": -1.2,
+            "aim": -2.2,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "combat": {
+              "active": true,
+              "angle": 0.27
+            }
+          },
+          "beforeYaw": 2.2,
+          "expectedYaw": -0.27,
+          "arguments": {
+            "travel": null,
+            "aim": 0.27,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "combat": {
+              "active": false,
+              "angle": 2.8
+            }
+          },
+          "beforeYaw": -0.27,
+          "expectedYaw": -0.27,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": -1.4,
+            "combat": {
+              "active": false,
+              "angle": 2.8
+            }
+          },
+          "beforeYaw": -0.27,
+          "expectedYaw": 1.4,
+          "arguments": {
+            "travel": -1.4,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "seat-facing-wins-with-aim-and-travel",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "movementHeading": 1,
+          "combat": {
+            "active": true,
+            "angle": 0.4
+          },
+          "seated": true,
+          "seatFacing": 0.3
+        },
+        {
+          "interior": false,
+          "movementHeading": -1,
+          "combat": {
+            "active": true,
+            "angle": -2
+          },
+          "seated": true,
+          "seatFacing": -1.57
+        },
+        {
+          "seated": true
+        },
+        {
+          "seated": true,
+          "seatFacing": 0
+        },
+        {},
+        {
+          "movementHeading": 2.8
+        }
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 1,
+            "combat": {
+              "active": true,
+              "angle": 0.4
+            },
+            "seated": true,
+            "seatFacing": 0.3
+          },
+          "beforeYaw": 0,
+          "expectedYaw": 0.3,
+          "arguments": {
+            "travel": 1,
+            "aim": 0.4,
+            "seatFacing": 0.3
+          }
+        },
+        {
+          "input": {
+            "interior": false,
+            "movementHeading": -1,
+            "combat": {
+              "active": true,
+              "angle": -2
+            },
+            "seated": true,
+            "seatFacing": -1.57
+          },
+          "beforeYaw": 0.3,
+          "expectedYaw": -1.57,
+          "arguments": {
+            "travel": -1,
+            "aim": -2,
+            "seatFacing": -1.57
+          }
+        },
+        {
+          "input": {
+            "seated": true
+          },
+          "beforeYaw": -1.57,
+          "expectedYaw": 0,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": 0
+          }
+        },
+        {
+          "input": {
+            "seated": true,
+            "seatFacing": 0
+          },
+          "beforeYaw": 0,
+          "expectedYaw": 0,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": 0
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": 0,
+          "expectedYaw": 0,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": 2.8
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -2.8,
+          "arguments": {
+            "travel": 2.8,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "seat-exit-retains-last-facing-until-travel-or-aim",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "seated": true,
+          "seatFacing": 1.2
+        },
+        {},
+        {
+          "combat": {
+            "active": true,
+            "angle": 0.9
+          }
+        },
+        {},
+        {
+          "movementHeading": -0.7
+        },
+        {}
+      ],
+      "frames": [
+        {
+          "input": {
+            "seated": true,
+            "seatFacing": 1.2
+          },
+          "beforeYaw": 0,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": 1.2
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": 1.2,
+          "expectedYaw": 1.2,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "combat": {
+              "active": true,
+              "angle": 0.9
+            }
+          },
+          "beforeYaw": 1.2,
+          "expectedYaw": -0.9,
+          "arguments": {
+            "travel": null,
+            "aim": 0.9,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": -0.9,
+          "expectedYaw": -0.9,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": -0.7
+          },
+          "beforeYaw": -0.9,
+          "expectedYaw": 0.7,
+          "arguments": {
+            "travel": -0.7,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": 0.7,
+          "expectedYaw": 0.7,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "sprinting-does-not-change-unbound-priority",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "movementHeading": 1.2,
+          "sprinting": true
+        },
+        {
+          "movementHeading": 1.2,
+          "sprinting": true,
+          "combat": {
+            "active": true,
+            "angle": 0.42
+          }
+        },
+        {
+          "movementHeading": -2,
+          "sprinting": false,
+          "combat": {
+            "active": true,
+            "angle": -0.42
+          }
+        },
+        {
+          "movementHeading": -0.8,
+          "sprinting": true,
+          "combat": {
+            "active": false,
+            "angle": 0.42
+          }
+        }
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 1.2,
+            "sprinting": true
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -1.2,
+          "arguments": {
+            "travel": 1.2,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": 1.2,
+            "sprinting": true,
+            "combat": {
+              "active": true,
+              "angle": 0.42
+            }
+          },
+          "beforeYaw": -1.2,
+          "expectedYaw": -0.42,
+          "arguments": {
+            "travel": 1.2,
+            "aim": 0.42,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": -2,
+            "sprinting": false,
+            "combat": {
+              "active": true,
+              "angle": -0.42
+            }
+          },
+          "beforeYaw": -0.42,
+          "expectedYaw": 0.42,
+          "arguments": {
+            "travel": -2,
+            "aim": -0.42,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": -0.8,
+            "sprinting": true,
+            "combat": {
+              "active": false,
+              "angle": 0.42
+            }
+          },
+          "beforeYaw": 0.42,
+          "expectedYaw": 0.8,
+          "arguments": {
+            "travel": -0.8,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "stationary-preserves-initial-placement",
+      "initialYaw": 0.73,
+      "note": "",
+      "steps": [
+        {},
+        {
+          "interior": false
+        },
+        {
+          "interior": true
+        }
+      ],
+      "frames": [
+        {
+          "input": {},
+          "beforeYaw": 0.73,
+          "expectedYaw": 0.73,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": false
+          },
+          "beforeYaw": 0.73,
+          "expectedYaw": 0.73,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "interior": true
+          },
+          "beforeYaw": 0.73,
+          "expectedYaw": 0.73,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "true-new-scene-resets-stationary-facing",
+      "initialYaw": 0,
+      "note": "reset constructs fresh exact source crew-placement; models start at rotation.y0.",
+      "steps": [
+        {
+          "movementHeading": 1.8
+        },
+        {},
+        {
+          "reset": true
+        },
+        {}
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 1.8
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -1.8,
+          "arguments": {
+            "travel": 1.8,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": -1.8,
+          "expectedYaw": -1.8,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "reset": true
+          },
+          "beforeYaw": 0,
+          "expectedYaw": 0,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": 0,
+          "expectedYaw": 0,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "true-new-scene-then-current-authority-overrides",
+      "initialYaw": 0,
+      "note": "",
+      "steps": [
+        {
+          "movementHeading": 1.8
+        },
+        {
+          "reset": true,
+          "combat": {
+            "active": true,
+            "angle": 0.2
+          }
+        },
+        {
+          "reset": true,
+          "seated": true,
+          "seatFacing": -0.6
+        },
+        {
+          "reset": true,
+          "movementHeading": -1.1
+        }
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 1.8
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -1.8,
+          "arguments": {
+            "travel": 1.8,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "reset": true,
+            "combat": {
+              "active": true,
+              "angle": 0.2
+            }
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -0.2,
+          "arguments": {
+            "travel": null,
+            "aim": 0.2,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "reset": true,
+            "seated": true,
+            "seatFacing": -0.6
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -0.6,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": -0.6
+          }
+        },
+        {
+          "input": {
+            "reset": true,
+            "movementHeading": -1.1
+          },
+          "beforeYaw": 0,
+          "expectedYaw": 1.1,
+          "arguments": {
+            "travel": -1.1,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "pi-and-multiple-turn-angles-remain-source-direct",
+      "initialYaw": 0,
+      "note": "Source direct body placement does not shortest-angle smooth or normalize the override.",
+      "steps": [
+        {
+          "movementHeading": 3.1315926535897933
+        },
+        {
+          "movementHeading": -3.1315926535897933
+        },
+        {
+          "combat": {
+            "active": true,
+            "angle": 6.383185307179586
+          }
+        },
+        {
+          "seated": true,
+          "seatFacing": -6.483185307179586
+        },
+        {}
+      ],
+      "frames": [
+        {
+          "input": {
+            "movementHeading": 3.1315926535897933
+          },
+          "beforeYaw": 0,
+          "expectedYaw": -3.1315926535897933,
+          "arguments": {
+            "travel": 3.1315926535897933,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "movementHeading": -3.1315926535897933
+          },
+          "beforeYaw": -3.1315926535897933,
+          "expectedYaw": 3.1315926535897933,
+          "arguments": {
+            "travel": -3.1315926535897933,
+            "aim": null,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "combat": {
+              "active": true,
+              "angle": 6.383185307179586
+            }
+          },
+          "beforeYaw": 3.1315926535897933,
+          "expectedYaw": -6.383185307179586,
+          "arguments": {
+            "travel": null,
+            "aim": 6.383185307179586,
+            "seatFacing": null
+          }
+        },
+        {
+          "input": {
+            "seated": true,
+            "seatFacing": -6.483185307179586
+          },
+          "beforeYaw": -6.383185307179586,
+          "expectedYaw": -6.483185307179586,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": -6.483185307179586
+          }
+        },
+        {
+          "input": {},
+          "beforeYaw": -6.483185307179586,
+          "expectedYaw": -6.483185307179586,
+          "arguments": {
+            "travel": null,
+            "aim": null,
+            "seatFacing": null
+          }
+        }
+      ]
+    }
+  ]
+}

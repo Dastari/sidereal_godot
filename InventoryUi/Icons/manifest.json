@@ -1,0 +1,1347 @@
+{
+  "sourceRepository": "Dastari/sidereal_spacetime",
+  "sourceCommit": "914cae592e1fe100c387f3d40fd607d4229d51fc",
+  "entries": [
+    {
+      "definitionId": "compact-pistol",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/pistol.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2.png",
+      "sha256": "5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2",
+      "source": "assets/runtime/crew/items/r001/icons/grid/pistol.png",
+      "bytes": 51150
+    },
+    {
+      "definitionId": "heavy-handgun",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/pistol.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2.png",
+      "sha256": "5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2",
+      "source": "assets/runtime/crew/items/r001/icons/grid/pistol.png",
+      "bytes": 51150
+    },
+    {
+      "definitionId": "carbine",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/compact-carbine.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/bb1654ec9c3ae64c6563990704b6a0e20e0feb8660612c1312782f20969358d0.png",
+      "sha256": "bb1654ec9c3ae64c6563990704b6a0e20e0feb8660612c1312782f20969358d0",
+      "source": "assets/runtime/crew/items/r001/icons/grid/compact-carbine.png",
+      "bytes": 69972
+    },
+    {
+      "definitionId": "long-rifle",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/rifle.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/334e86469a2ecfd0ed9ab821a5493fce03b1953910cbfffb4b5c8865dbaf1d98.png",
+      "sha256": "334e86469a2ecfd0ed9ab821a5493fce03b1953910cbfffb4b5c8865dbaf1d98",
+      "source": "assets/runtime/crew/items/r001/icons/grid/rifle.png",
+      "bytes": 66651
+    },
+    {
+      "definitionId": "scanner",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/scanner.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5e183362af83344025d879dfd89cdb05bb59d6b98a84972cddfce221b871f159.png",
+      "sha256": "5e183362af83344025d879dfd89cdb05bb59d6b98a84972cddfce221b871f159",
+      "source": "assets/runtime/crew/items/r001/icons/grid/scanner.png",
+      "bytes": 19529
+    },
+    {
+      "definitionId": "plasma-cutter",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/utility-cutter.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/baddc0ed269be07b757dccbf4d8bf6d8ed2fdf86f2320eeddefac5d00a40eb0f.png",
+      "sha256": "baddc0ed269be07b757dccbf4d8bf6d8ed2fdf86f2320eeddefac5d00a40eb0f",
+      "source": "assets/runtime/crew/items/r001/icons/grid/utility-cutter.png",
+      "bytes": 28477
+    },
+    {
+      "definitionId": "medkit",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/medkit.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/fe017b2aeb19ebf828f9626fdcf91d2a1d5a8882def6cc929bfcd5e03bf2250b.png",
+      "sha256": "fe017b2aeb19ebf828f9626fdcf91d2a1d5a8882def6cc929bfcd5e03bf2250b",
+      "source": "assets/runtime/crew/items/r001/icons/grid/medkit.png",
+      "bytes": 37496
+    },
+    {
+      "definitionId": "power-cell",
+      "itemRevision": 1,
+      "iconUrl": "",
+      "resource": "res://InventoryUi/Icons/be1807415ae25a65d68ec26595cb5b95c4f9702d52c04f13dfc49cec72be8d66.png",
+      "sha256": "be1807415ae25a65d68ec26595cb5b95c4f9702d52c04f13dfc49cec72be8d66",
+      "source": "assets/runtime/equipment/icons/power-cell.png",
+      "bytes": 53465
+    },
+    {
+      "definitionId": "field-pack",
+      "itemRevision": 1,
+      "iconUrl": "",
+      "resource": "res://InventoryUi/Icons/063f2aad0bc2e8acac591911730bb43a98ee45a649bfa914097fefa5064a7b8f.png",
+      "sha256": "063f2aad0bc2e8acac591911730bb43a98ee45a649bfa914097fefa5064a7b8f",
+      "source": "assets/runtime/equipment/icons/utility-backpack.png",
+      "bytes": 66202
+    },
+    {
+      "definitionId": "resource-canister",
+      "itemRevision": 1,
+      "iconUrl": "",
+      "resource": "res://InventoryUi/Icons/dc098019696a861b1670f77f3438b4b54c6548a5f7ce723e22fd8dcbb8ddf66e.png",
+      "sha256": "dc098019696a861b1670f77f3438b4b54c6548a5f7ce723e22fd8dcbb8ddf66e",
+      "source": "assets/runtime/equipment/icons/resource-canister.png",
+      "bytes": 58942
+    },
+    {
+      "definitionId": "pistol",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/pistol.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2.png",
+      "sha256": "5510eee50d03cb92bc30d16baea5f4ef46fd47671fd28fd8d4cd1400cdd003f2",
+      "source": "assets/runtime/crew/items/r001/icons/grid/pistol.png",
+      "bytes": 51150
+    },
+    {
+      "definitionId": "smg",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/smg.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/867fe12c997d0d2ff71e39ec3aa17c43dbe8d88958cfba301ab3bdbc9d0c2813.png",
+      "sha256": "867fe12c997d0d2ff71e39ec3aa17c43dbe8d88958cfba301ab3bdbc9d0c2813",
+      "source": "assets/runtime/crew/items/r001/icons/grid/smg.png",
+      "bytes": 55321
+    },
+    {
+      "definitionId": "compact-carbine",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/compact-carbine.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/bb1654ec9c3ae64c6563990704b6a0e20e0feb8660612c1312782f20969358d0.png",
+      "sha256": "bb1654ec9c3ae64c6563990704b6a0e20e0feb8660612c1312782f20969358d0",
+      "source": "assets/runtime/crew/items/r001/icons/grid/compact-carbine.png",
+      "bytes": 69972
+    },
+    {
+      "definitionId": "rifle",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/rifle.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/334e86469a2ecfd0ed9ab821a5493fce03b1953910cbfffb4b5c8865dbaf1d98.png",
+      "sha256": "334e86469a2ecfd0ed9ab821a5493fce03b1953910cbfffb4b5c8865dbaf1d98",
+      "source": "assets/runtime/crew/items/r001/icons/grid/rifle.png",
+      "bytes": 66651
+    },
+    {
+      "definitionId": "shotgun",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/shotgun.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/8d73b663026bb2e221edbf76a7feadec1e6d0fa35d948416fb32fe2b81248315.png",
+      "sha256": "8d73b663026bb2e221edbf76a7feadec1e6d0fa35d948416fb32fe2b81248315",
+      "source": "assets/runtime/crew/items/r001/icons/grid/shotgun.png",
+      "bytes": 68180
+    },
+    {
+      "definitionId": "heavy-gun",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/heavy-gun.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/47df4fbbf7c5b26ff56d42ca275d8a87084d6317a8e2c978d40762d95d87f797.png",
+      "sha256": "47df4fbbf7c5b26ff56d42ca275d8a87084d6317a8e2c978d40762d95d87f797",
+      "source": "assets/runtime/crew/items/r001/icons/grid/heavy-gun.png",
+      "bytes": 68369
+    },
+    {
+      "definitionId": "beam-rifle",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/beam-rifle.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/4f58d580f503def032993b13b38275c45de72529c95696286ffe45b0abb77fdf.png",
+      "sha256": "4f58d580f503def032993b13b38275c45de72529c95696286ffe45b0abb77fdf",
+      "source": "assets/runtime/crew/items/r001/icons/grid/beam-rifle.png",
+      "bytes": 66771
+    },
+    {
+      "definitionId": "rail-rifle",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/rail-rifle.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/3c062cbb0ed9b05ec1561132383993c80c773d63dff5182b49ff761a3d7c33c2.png",
+      "sha256": "3c062cbb0ed9b05ec1561132383993c80c773d63dff5182b49ff761a3d7c33c2",
+      "source": "assets/runtime/crew/items/r001/icons/grid/rail-rifle.png",
+      "bytes": 68486
+    },
+    {
+      "definitionId": "stun-gun",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/stun-gun.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/4c273df5f7361b18a67f541cb5d5b19644ab8bd861d9713c0071f7ffca8652a3.png",
+      "sha256": "4c273df5f7361b18a67f541cb5d5b19644ab8bd861d9713c0071f7ffca8652a3",
+      "source": "assets/runtime/crew/items/r001/icons/grid/stun-gun.png",
+      "bytes": 39848
+    },
+    {
+      "definitionId": "baton",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/baton.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/020f1156ec9c22d6249e7df187f3e78ecfcc1cffc3786cee21afebd437deeeba.png",
+      "sha256": "020f1156ec9c22d6249e7df187f3e78ecfcc1cffc3786cee21afebd437deeeba",
+      "source": "assets/runtime/crew/items/r001/icons/grid/baton.png",
+      "bytes": 26389
+    },
+    {
+      "definitionId": "grenade",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/grenade.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5cdb70ac3e69710fb11e369e9f6991abd51649cf7f15773c69a250db7cf2d554.png",
+      "sha256": "5cdb70ac3e69710fb11e369e9f6991abd51649cf7f15773c69a250db7cf2d554",
+      "source": "assets/runtime/crew/items/r001/icons/grid/grenade.png",
+      "bytes": 12327
+    },
+    {
+      "definitionId": "medgun",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/medgun.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/dac3e668fec5b1dab9882125f8248e039082baf95c6a0171f60e7a79aee5e8b8.png",
+      "sha256": "dac3e668fec5b1dab9882125f8248e039082baf95c6a0171f60e7a79aee5e8b8",
+      "source": "assets/runtime/crew/items/r001/icons/grid/medgun.png",
+      "bytes": 31936
+    },
+    {
+      "definitionId": "utility-cutter",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/utility-cutter.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/baddc0ed269be07b757dccbf4d8bf6d8ed2fdf86f2320eeddefac5d00a40eb0f.png",
+      "sha256": "baddc0ed269be07b757dccbf4d8bf6d8ed2fdf86f2320eeddefac5d00a40eb0f",
+      "source": "assets/runtime/crew/items/r001/icons/grid/utility-cutter.png",
+      "bytes": 28477
+    },
+    {
+      "definitionId": "repair-tool",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/repair-tool.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/351a779acd0bf2f40802289944d6f06fa87bbf1d13133264c697666b7dff10f7.png",
+      "sha256": "351a779acd0bf2f40802289944d6f06fa87bbf1d13133264c697666b7dff10f7",
+      "source": "assets/runtime/crew/items/r001/icons/grid/repair-tool.png",
+      "bytes": 35732
+    },
+    {
+      "definitionId": "welder",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/welder.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/cd14729ebd541c4d9799c949eacf5a50a0046327733a2fe04d1766a7ee89ce2e.png",
+      "sha256": "cd14729ebd541c4d9799c949eacf5a50a0046327733a2fe04d1766a7ee89ce2e",
+      "source": "assets/runtime/crew/items/r001/icons/grid/welder.png",
+      "bytes": 36957
+    },
+    {
+      "definitionId": "multi-tool",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/multi-tool.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/8885faab4a6bfb588e5ef925518084b9ebcc26f913ba5ca16509a13581153563.png",
+      "sha256": "8885faab4a6bfb588e5ef925518084b9ebcc26f913ba5ca16509a13581153563",
+      "source": "assets/runtime/crew/items/r001/icons/grid/multi-tool.png",
+      "bytes": 36140
+    },
+    {
+      "definitionId": "mining-drill",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/mining-drill.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/5437e70bb9ad70ca4547b0def6e403a74fd2f88108261071b135dca3fb744f82.png",
+      "sha256": "5437e70bb9ad70ca4547b0def6e403a74fd2f88108261071b135dca3fb744f82",
+      "source": "assets/runtime/crew/items/r001/icons/grid/mining-drill.png",
+      "bytes": 50227
+    },
+    {
+      "definitionId": "wrench",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/wrench.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/16220fa75fa91ed30ebd1152f1429b196b7b9d559c52be87dc371bae2c174690.png",
+      "sha256": "16220fa75fa91ed30ebd1152f1429b196b7b9d559c52be87dc371bae2c174690",
+      "source": "assets/runtime/crew/items/r001/icons/grid/wrench.png",
+      "bytes": 26697
+    },
+    {
+      "definitionId": "sample-scanner",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/sample-scanner.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/fdac375c665c9e57d80499051882924594633097e69faec910bc0e732d5bb2ff.png",
+      "sha256": "fdac375c665c9e57d80499051882924594633097e69faec910bc0e732d5bb2ff",
+      "source": "assets/runtime/crew/items/r001/icons/grid/sample-scanner.png",
+      "bytes": 37253
+    },
+    {
+      "definitionId": "data-pad",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/data-pad.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/49d1b039b0495877a0516aee16656a125e9a41a02d349418d7dba7f4ef4db545.png",
+      "sha256": "49d1b039b0495877a0516aee16656a125e9a41a02d349418d7dba7f4ef4db545",
+      "source": "assets/runtime/crew/items/r001/icons/grid/data-pad.png",
+      "bytes": 18160
+    },
+    {
+      "definitionId": "shield-emitter",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/shield-emitter.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/b0115742f0847e1a496e7e8e094a07e10033a9ccf80f00a0b8d27b376bfde204.png",
+      "sha256": "b0115742f0847e1a496e7e8e094a07e10033a9ccf80f00a0b8d27b376bfde204",
+      "source": "assets/runtime/crew/items/r001/icons/grid/shield-emitter.png",
+      "bytes": 19246
+    },
+    {
+      "definitionId": "flashlight",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/flashlight.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/e6a377f4ab8156c3522d439d06fbbcc027a8f00c2ebdfe30856f50347eea0ff7.png",
+      "sha256": "e6a377f4ab8156c3522d439d06fbbcc027a8f00c2ebdfe30856f50347eea0ff7",
+      "source": "assets/runtime/crew/items/r001/icons/grid/flashlight.png",
+      "bytes": 19704
+    },
+    {
+      "definitionId": "grapple",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/grapple.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/4ec5bf1e6b281cf8622ba024c7ab4142d5176ec86d632f7fb891be627b53e2f9.png",
+      "sha256": "4ec5bf1e6b281cf8622ba024c7ab4142d5176ec86d632f7fb891be627b53e2f9",
+      "source": "assets/runtime/crew/items/r001/icons/grid/grapple.png",
+      "bytes": 32935
+    },
+    {
+      "definitionId": "drone",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/drone.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/f953d69ac4d49ccd0c50aab00907bd3c8dc8af8018efde6f496f033a26348e3a.png",
+      "sha256": "f953d69ac4d49ccd0c50aab00907bd3c8dc8af8018efde6f496f033a26348e3a",
+      "source": "assets/runtime/crew/items/r001/icons/grid/drone.png",
+      "bytes": 12380
+    },
+    {
+      "definitionId": "cargo-box",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/cargo-box.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/91bf74b6a38ebfb560005a07c781118d2f1e8b41ede21214fd66f4f7fca1950e.png",
+      "sha256": "91bf74b6a38ebfb560005a07c781118d2f1e8b41ede21214fd66f4f7fca1950e",
+      "source": "assets/runtime/crew/items/r001/icons/grid/cargo-box.png",
+      "bytes": 38078
+    },
+    {
+      "definitionId": "shield-pack",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/items/r001/icons/grid/shield-pack.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/8056b81849910d3f25b8b9a5118f5abc7a4b9f16836a168ceb54da9891f9166a.png",
+      "sha256": "8056b81849910d3f25b8b9a5118f5abc7a4b9f16836a168ceb54da9891f9166a",
+      "source": "assets/runtime/crew/items/r001/icons/grid/shield-pack.png",
+      "bytes": 35484
+    },
+    {
+      "definitionId": "crew-captain-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/42d8a115e29abc16520339f5d8e4b7802826883c7c546b13f1e3f31c37b80a4e.png",
+      "sha256": "42d8a115e29abc16520339f5d8e4b7802826883c7c546b13f1e3f31c37b80a4e",
+      "source": "assets/runtime/crew/components/captain-belt.png",
+      "bytes": 99644
+    },
+    {
+      "definitionId": "crew-captain-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/dc37916281ab44c2953fb386b749e1da73e7116927999160752b39fc3071e710.png",
+      "sha256": "dc37916281ab44c2953fb386b749e1da73e7116927999160752b39fc3071e710",
+      "source": "assets/runtime/crew/components/captain-boots.png",
+      "bytes": 120949
+    },
+    {
+      "definitionId": "crew-captain-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/9b6ecd7b735c82244d725887b91113b5334fdd76091930eba1080792dd30bf07.png",
+      "sha256": "9b6ecd7b735c82244d725887b91113b5334fdd76091930eba1080792dd30bf07",
+      "source": "assets/runtime/crew/components/captain-helmet.png",
+      "bytes": 119490
+    },
+    {
+      "definitionId": "crew-captain-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/55189395bf31705b589cb6d69491d9ef94ee370420ce124f6186bed3b9734692.png",
+      "sha256": "55189395bf31705b589cb6d69491d9ef94ee370420ce124f6186bed3b9734692",
+      "source": "assets/runtime/crew/components/captain-chest.png",
+      "bytes": 106179
+    },
+    {
+      "definitionId": "crew-captain-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/cc0a843ddf3072259ec716b9f4c943c813f8cb324358f910e86029020a2f3d0f.png",
+      "sha256": "cc0a843ddf3072259ec716b9f4c943c813f8cb324358f910e86029020a2f3d0f",
+      "source": "assets/runtime/crew/components/captain-shoulders.png",
+      "bytes": 91793
+    },
+    {
+      "definitionId": "crew-captain-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/a84125b79f93caae997bfa27d0a1486af436fa0cc6916d701d0c4604dd050378.png",
+      "sha256": "a84125b79f93caae997bfa27d0a1486af436fa0cc6916d701d0c4604dd050378",
+      "source": "assets/runtime/crew/components/captain-gloves.png",
+      "bytes": 87495
+    },
+    {
+      "definitionId": "crew-captain-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/0691e22bc25954ffb905dafad2ee36c7f0f42922129467bdb0e6fefece071c4f.png",
+      "sha256": "0691e22bc25954ffb905dafad2ee36c7f0f42922129467bdb0e6fefece071c4f",
+      "source": "assets/runtime/crew/components/captain-back.png",
+      "bytes": 149534
+    },
+    {
+      "definitionId": "crew-captain-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/captain-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/356c699f6373649058f3d7b9aedc792d42fe20dbf91a7e7c7770f6cae6d67cbd.png",
+      "sha256": "356c699f6373649058f3d7b9aedc792d42fe20dbf91a7e7c7770f6cae6d67cbd",
+      "source": "assets/runtime/crew/components/captain-legs.png",
+      "bytes": 153332
+    },
+    {
+      "definitionId": "crew-engineer-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/6627dc8a451c11663beb3d79363f0a16339dc2277b304f4820f4bd01717621f4.png",
+      "sha256": "6627dc8a451c11663beb3d79363f0a16339dc2277b304f4820f4bd01717621f4",
+      "source": "assets/runtime/crew/components/engineer-back.png",
+      "bytes": 149061
+    },
+    {
+      "definitionId": "crew-engineer-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/785fe1cee31b905eda735e9497bc01c8fd64ac690c4d06e73c1f114cf1a5f6e1.png",
+      "sha256": "785fe1cee31b905eda735e9497bc01c8fd64ac690c4d06e73c1f114cf1a5f6e1",
+      "source": "assets/runtime/crew/components/engineer-belt.png",
+      "bytes": 112208
+    },
+    {
+      "definitionId": "crew-engineer-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/1212536d110f53c695f9d6ca13472998cbdc7439172fee0cd3cc7f48d476f4b7.png",
+      "sha256": "1212536d110f53c695f9d6ca13472998cbdc7439172fee0cd3cc7f48d476f4b7",
+      "source": "assets/runtime/crew/components/engineer-boots.png",
+      "bytes": 121445
+    },
+    {
+      "definitionId": "crew-engineer-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/426324f19d00f6d03c029e7bcb117ff912f619a1146865a68d34195e7aa44e5e.png",
+      "sha256": "426324f19d00f6d03c029e7bcb117ff912f619a1146865a68d34195e7aa44e5e",
+      "source": "assets/runtime/crew/components/engineer-chest.png",
+      "bytes": 113030
+    },
+    {
+      "definitionId": "crew-engineer-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/867134b42ab5c01bded32f7843b50a460e876c966a18a18ea5958190cfcdc64b.png",
+      "sha256": "867134b42ab5c01bded32f7843b50a460e876c966a18a18ea5958190cfcdc64b",
+      "source": "assets/runtime/crew/components/engineer-helmet.png",
+      "bytes": 139495
+    },
+    {
+      "definitionId": "crew-engineer-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/c4ef3905c5a8e52eb0f3a9dffcfe1f5ab6c621a84d99f0a70117360650661537.png",
+      "sha256": "c4ef3905c5a8e52eb0f3a9dffcfe1f5ab6c621a84d99f0a70117360650661537",
+      "source": "assets/runtime/crew/components/engineer-visor.png",
+      "bytes": 84666
+    },
+    {
+      "definitionId": "crew-engineer-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/b892ac7fe4ce683dd79e17872768535fc7a5c88de96c8b5323af4d8734f042c1.png",
+      "sha256": "b892ac7fe4ce683dd79e17872768535fc7a5c88de96c8b5323af4d8734f042c1",
+      "source": "assets/runtime/crew/components/engineer-gloves.png",
+      "bytes": 85944
+    },
+    {
+      "definitionId": "crew-engineer-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/1f8b260114651ab1d4bcd38e3220f817fd72e9e3a3839a32e2390b854d3eefee.png",
+      "sha256": "1f8b260114651ab1d4bcd38e3220f817fd72e9e3a3839a32e2390b854d3eefee",
+      "source": "assets/runtime/crew/components/engineer-legs.png",
+      "bytes": 169122
+    },
+    {
+      "definitionId": "crew-engineer-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/engineer-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/b9ab907c8b8631761d9085a35bc15e3b3873596d750b83e4738079abca476bd0.png",
+      "sha256": "b9ab907c8b8631761d9085a35bc15e3b3873596d750b83e4738079abca476bd0",
+      "source": "assets/runtime/crew/components/engineer-shoulders.png",
+      "bytes": 91896
+    },
+    {
+      "definitionId": "crew-medic-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-back.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/d3fedcc846a9932df74a006dfcb2af54d3003827c9b7eb58fa40a4ca1d0d85f5.png",
+      "sha256": "d3fedcc846a9932df74a006dfcb2af54d3003827c9b7eb58fa40a4ca1d0d85f5",
+      "source": "assets/runtime/crew/components/medic-back.png",
+      "bytes": 234690
+    },
+    {
+      "definitionId": "crew-medic-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-belt.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/314c4ba575b9f9275d4360ebd1c489dc0c8bab8e50393ca1b44fc076da55f545.png",
+      "sha256": "314c4ba575b9f9275d4360ebd1c489dc0c8bab8e50393ca1b44fc076da55f545",
+      "source": "assets/runtime/crew/components/medic-belt.png",
+      "bytes": 181352
+    },
+    {
+      "definitionId": "crew-medic-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-boots.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/677d54a4bc4b354e2bb803aa59cd19e5fd0645ddf4c5c344ab2b6c7970505a36.png",
+      "sha256": "677d54a4bc4b354e2bb803aa59cd19e5fd0645ddf4c5c344ab2b6c7970505a36",
+      "source": "assets/runtime/crew/components/medic-boots.png",
+      "bytes": 182913
+    },
+    {
+      "definitionId": "crew-medic-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-chest.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/057fe7efc0071ea004d461fc683188a0225033841402f7d10f0cd514ce7c317c.png",
+      "sha256": "057fe7efc0071ea004d461fc683188a0225033841402f7d10f0cd514ce7c317c",
+      "source": "assets/runtime/crew/components/medic-chest.png",
+      "bytes": 184141
+    },
+    {
+      "definitionId": "crew-medic-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-gloves.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/a7cdbea2051d56e38a2276a15479f530f6a63b046a95f7107f480c9e27a8fcdb.png",
+      "sha256": "a7cdbea2051d56e38a2276a15479f530f6a63b046a95f7107f480c9e27a8fcdb",
+      "source": "assets/runtime/crew/components/medic-gloves.png",
+      "bytes": 146472
+    },
+    {
+      "definitionId": "crew-medic-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-legs.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/8daafb79bc4b5c5f36ead2244634e49bd9b46123f6e37832ac928cd79537ac54.png",
+      "sha256": "8daafb79bc4b5c5f36ead2244634e49bd9b46123f6e37832ac928cd79537ac54",
+      "source": "assets/runtime/crew/components/medic-legs.png",
+      "bytes": 261271
+    },
+    {
+      "definitionId": "crew-medic-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-helmet.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/fea49eee6f3fb071c127ee560748d2078c2d639076d97879dbab9e07f02fe636.png",
+      "sha256": "fea49eee6f3fb071c127ee560748d2078c2d639076d97879dbab9e07f02fe636",
+      "source": "assets/runtime/crew/components/medic-helmet.png",
+      "bytes": 247690
+    },
+    {
+      "definitionId": "crew-medic-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-visor.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/49baedd93ef095f9fc63ffe21fb452d7446824956ee5525748a7c9f7bc99e3ff.png",
+      "sha256": "49baedd93ef095f9fc63ffe21fb452d7446824956ee5525748a7c9f7bc99e3ff",
+      "source": "assets/runtime/crew/components/medic-visor.png",
+      "bytes": 204603
+    },
+    {
+      "definitionId": "crew-medic-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/medic-shoulders.png?revision=r008",
+      "resource": "res://InventoryUi/Icons/60bcfd91a2c2ce664f09f2cda98abaabcecf4dcb057d2d9a5bbfcea383fd0d64.png",
+      "sha256": "60bcfd91a2c2ce664f09f2cda98abaabcecf4dcb057d2d9a5bbfcea383fd0d64",
+      "source": "assets/runtime/crew/components/medic-shoulders.png",
+      "bytes": 137468
+    },
+    {
+      "definitionId": "crew-pilot-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/3e1aab4004aedb030c03fe1f33737881a31a3f6aac056198db91c65e9f4fb07c.png",
+      "sha256": "3e1aab4004aedb030c03fe1f33737881a31a3f6aac056198db91c65e9f4fb07c",
+      "source": "assets/runtime/crew/components/pilot-belt.png",
+      "bytes": 99677
+    },
+    {
+      "definitionId": "crew-pilot-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/3e0e5709ba979e5005b29273306398a3af2d56c1d16bfad7134cc296eee18002.png",
+      "sha256": "3e0e5709ba979e5005b29273306398a3af2d56c1d16bfad7134cc296eee18002",
+      "source": "assets/runtime/crew/components/pilot-boots.png",
+      "bytes": 121258
+    },
+    {
+      "definitionId": "crew-pilot-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/acd22ef325cf191dfa074fcd39f9d0a048695bfcbd12a0c30c13a3cb2ab8d462.png",
+      "sha256": "acd22ef325cf191dfa074fcd39f9d0a048695bfcbd12a0c30c13a3cb2ab8d462",
+      "source": "assets/runtime/crew/components/pilot-chest.png",
+      "bytes": 106198
+    },
+    {
+      "definitionId": "crew-pilot-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/c53ad7bc989dfc0c11d83ac2c476d94c4165f5c8ccbb27cd7d8fea0a1a894124.png",
+      "sha256": "c53ad7bc989dfc0c11d83ac2c476d94c4165f5c8ccbb27cd7d8fea0a1a894124",
+      "source": "assets/runtime/crew/components/pilot-back.png",
+      "bytes": 146523
+    },
+    {
+      "definitionId": "crew-pilot-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/ac599650f97c652c88c72753fe612b80cd36bc26b773a4de276f9eeb70f37843.png",
+      "sha256": "ac599650f97c652c88c72753fe612b80cd36bc26b773a4de276f9eeb70f37843",
+      "source": "assets/runtime/crew/components/pilot-gloves.png",
+      "bytes": 84820
+    },
+    {
+      "definitionId": "crew-pilot-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/0ab1ed738c8b110014f5b8ef19b94f187c862230f238ad3a6bac0a0693c06e99.png",
+      "sha256": "0ab1ed738c8b110014f5b8ef19b94f187c862230f238ad3a6bac0a0693c06e99",
+      "source": "assets/runtime/crew/components/pilot-legs.png",
+      "bytes": 130306
+    },
+    {
+      "definitionId": "crew-pilot-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/f98b0404b2e0d93faf2d87179c1e0593e8de6acad1ef5fe8ee357f328c7fb675.png",
+      "sha256": "f98b0404b2e0d93faf2d87179c1e0593e8de6acad1ef5fe8ee357f328c7fb675",
+      "source": "assets/runtime/crew/components/pilot-helmet.png",
+      "bytes": 150541
+    },
+    {
+      "definitionId": "crew-pilot-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/1cebce28e2f7eab7404a7b97780aee02e8746c020f4d67cbba47ff7d91ac86d8.png",
+      "sha256": "1cebce28e2f7eab7404a7b97780aee02e8746c020f4d67cbba47ff7d91ac86d8",
+      "source": "assets/runtime/crew/components/pilot-visor.png",
+      "bytes": 120605
+    },
+    {
+      "definitionId": "crew-pilot-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/pilot-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/dfd1c1fcb0725e0603075ca3ce554c94afcf4e626475f06eb287c2d7e17054c2.png",
+      "sha256": "dfd1c1fcb0725e0603075ca3ce554c94afcf4e626475f06eb287c2d7e17054c2",
+      "source": "assets/runtime/crew/components/pilot-shoulders.png",
+      "bytes": 91190
+    },
+    {
+      "definitionId": "crew-security-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/6d09bea3b616db2ad02bef6da6da51218f4b8ce34bfe52b186fe1340cf293650.png",
+      "sha256": "6d09bea3b616db2ad02bef6da6da51218f4b8ce34bfe52b186fe1340cf293650",
+      "source": "assets/runtime/crew/components/security-belt.png",
+      "bytes": 99508
+    },
+    {
+      "definitionId": "crew-security-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/f0a0a837b6a5162a73b227423386556c906a9c040c9d9ca2f6d0a24a4b93f3db.png",
+      "sha256": "f0a0a837b6a5162a73b227423386556c906a9c040c9d9ca2f6d0a24a4b93f3db",
+      "source": "assets/runtime/crew/components/security-boots.png",
+      "bytes": 121557
+    },
+    {
+      "definitionId": "crew-security-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/3686e5bd45b06c5dc584d7ebd364cf90904fba8849217199642eac8fc9d6871e.png",
+      "sha256": "3686e5bd45b06c5dc584d7ebd364cf90904fba8849217199642eac8fc9d6871e",
+      "source": "assets/runtime/crew/components/security-chest.png",
+      "bytes": 108123
+    },
+    {
+      "definitionId": "crew-security-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/bf2852ec9f8ab1352fb4b57c2747de49db86867a97af173a7adfc3f96dc89f51.png",
+      "sha256": "bf2852ec9f8ab1352fb4b57c2747de49db86867a97af173a7adfc3f96dc89f51",
+      "source": "assets/runtime/crew/components/security-back.png",
+      "bytes": 154802
+    },
+    {
+      "definitionId": "crew-security-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/799083f255cf106e79061a5b6e0e235b1a5faa9c6c99a0044c5f05d82a0717fc.png",
+      "sha256": "799083f255cf106e79061a5b6e0e235b1a5faa9c6c99a0044c5f05d82a0717fc",
+      "source": "assets/runtime/crew/components/security-gloves.png",
+      "bytes": 86399
+    },
+    {
+      "definitionId": "crew-security-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/f0009658958846bfdae5caa2e0bec36280ed4a3e30e3d1d4c94b5dae6a8fafad.png",
+      "sha256": "f0009658958846bfdae5caa2e0bec36280ed4a3e30e3d1d4c94b5dae6a8fafad",
+      "source": "assets/runtime/crew/components/security-legs.png",
+      "bytes": 159633
+    },
+    {
+      "definitionId": "crew-security-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/de4a1fc9649f5819cbb07c8abd55efcb00796ca8efaefb4ab29e5473db4ad0e7.png",
+      "sha256": "de4a1fc9649f5819cbb07c8abd55efcb00796ca8efaefb4ab29e5473db4ad0e7",
+      "source": "assets/runtime/crew/components/security-helmet.png",
+      "bytes": 130351
+    },
+    {
+      "definitionId": "crew-security-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/security-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/ac576799436ca1a7bd22f342e816a795bddc203606d4b25b0200cadaf099ad74.png",
+      "sha256": "ac576799436ca1a7bd22f342e816a795bddc203606d4b25b0200cadaf099ad74",
+      "source": "assets/runtime/crew/components/security-shoulders.png",
+      "bytes": 92863
+    },
+    {
+      "definitionId": "crew-marine-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/8d74badcae982f460e644fb7d2c4baf966f89f02135ae0e672b9c53b3682f552.png",
+      "sha256": "8d74badcae982f460e644fb7d2c4baf966f89f02135ae0e672b9c53b3682f552",
+      "source": "assets/runtime/crew/components/marine-belt.png",
+      "bytes": 106947
+    },
+    {
+      "definitionId": "crew-marine-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/699c7c8412d44ff2b9bae5491cb02951f2724eac056ffa02c763b5a59890984d.png",
+      "sha256": "699c7c8412d44ff2b9bae5491cb02951f2724eac056ffa02c763b5a59890984d",
+      "source": "assets/runtime/crew/components/marine-boots.png",
+      "bytes": 120699
+    },
+    {
+      "definitionId": "crew-marine-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/1edd1ba67f94fb7cbb93c8a9ee983f5bf0e0d5d05e74e784b44de11d4ebdc039.png",
+      "sha256": "1edd1ba67f94fb7cbb93c8a9ee983f5bf0e0d5d05e74e784b44de11d4ebdc039",
+      "source": "assets/runtime/crew/components/marine-chest.png",
+      "bytes": 113001
+    },
+    {
+      "definitionId": "crew-marine-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/7280cc189a364b9304fc30871e8fed96b2fb867989b1c9c24a07526edf3c9517.png",
+      "sha256": "7280cc189a364b9304fc30871e8fed96b2fb867989b1c9c24a07526edf3c9517",
+      "source": "assets/runtime/crew/components/marine-gloves.png",
+      "bytes": 85472
+    },
+    {
+      "definitionId": "crew-marine-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/ffeeec76439d26c1a07297652176f1299ce5a74fb24f47afb93d8efa724762ec.png",
+      "sha256": "ffeeec76439d26c1a07297652176f1299ce5a74fb24f47afb93d8efa724762ec",
+      "source": "assets/runtime/crew/components/marine-legs.png",
+      "bytes": 135190
+    },
+    {
+      "definitionId": "crew-marine-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/53a7eca2a621dd0e3b2ba6817dc4f95db4e446f5aa4a2b0f3af5e00e69d2e1c5.png",
+      "sha256": "53a7eca2a621dd0e3b2ba6817dc4f95db4e446f5aa4a2b0f3af5e00e69d2e1c5",
+      "source": "assets/runtime/crew/components/marine-shoulders.png",
+      "bytes": 98192
+    },
+    {
+      "definitionId": "crew-marine-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/c7797a1c53965fa5fe2a6cc45747a526291691118bd5798eaa7c483ce77892e0.png",
+      "sha256": "c7797a1c53965fa5fe2a6cc45747a526291691118bd5798eaa7c483ce77892e0",
+      "source": "assets/runtime/crew/components/marine-helmet.png",
+      "bytes": 161627
+    },
+    {
+      "definitionId": "crew-marine-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/e3dd7f011989844bcb883a2417e397b462be6bf3ffb107b4fbad715d9df568b4.png",
+      "sha256": "e3dd7f011989844bcb883a2417e397b462be6bf3ffb107b4fbad715d9df568b4",
+      "source": "assets/runtime/crew/components/marine-visor.png",
+      "bytes": 107081
+    },
+    {
+      "definitionId": "crew-marine-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/marine-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/dd748751dd4f3f77156a2289efef99fc4fbacc8b8f09e2e99cb027c76cb2f5e0.png",
+      "sha256": "dd748751dd4f3f77156a2289efef99fc4fbacc8b8f09e2e99cb027c76cb2f5e0",
+      "source": "assets/runtime/crew/components/marine-back.png",
+      "bytes": 172371
+    },
+    {
+      "definitionId": "crew-salvage-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/78cbd216ab06676498e751fb2ba556e0d6d34cfbbaf0f72cd6864b80814d1c6f.png",
+      "sha256": "78cbd216ab06676498e751fb2ba556e0d6d34cfbbaf0f72cd6864b80814d1c6f",
+      "source": "assets/runtime/crew/components/salvage-back.png",
+      "bytes": 145297
+    },
+    {
+      "definitionId": "crew-salvage-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/0c03607995b8fdcf01697ccc9bda48042dccce4d252b353952f0bdf711dfacb5.png",
+      "sha256": "0c03607995b8fdcf01697ccc9bda48042dccce4d252b353952f0bdf711dfacb5",
+      "source": "assets/runtime/crew/components/salvage-belt.png",
+      "bytes": 104468
+    },
+    {
+      "definitionId": "crew-salvage-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/2f83534d19649f7efbb726b5aaaecc8c91c0ae9f3a41ebe75407a4a438313ed6.png",
+      "sha256": "2f83534d19649f7efbb726b5aaaecc8c91c0ae9f3a41ebe75407a4a438313ed6",
+      "source": "assets/runtime/crew/components/salvage-boots.png",
+      "bytes": 121258
+    },
+    {
+      "definitionId": "crew-salvage-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/67c2427e87937aea8a276ee0e141c53712a412ba986a431063603f4504e917b2.png",
+      "sha256": "67c2427e87937aea8a276ee0e141c53712a412ba986a431063603f4504e917b2",
+      "source": "assets/runtime/crew/components/salvage-chest.png",
+      "bytes": 112906
+    },
+    {
+      "definitionId": "crew-salvage-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/c29ef8402241f815562c3cadfb4cf9935ac780101dca4e8991bb7a5032fbe0d4.png",
+      "sha256": "c29ef8402241f815562c3cadfb4cf9935ac780101dca4e8991bb7a5032fbe0d4",
+      "source": "assets/runtime/crew/components/salvage-gloves.png",
+      "bytes": 85603
+    },
+    {
+      "definitionId": "crew-salvage-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/b10758674626082b012c1e77a4d326c79f2b2f95c691056c3f50b8b11fe1a4c1.png",
+      "sha256": "b10758674626082b012c1e77a4d326c79f2b2f95c691056c3f50b8b11fe1a4c1",
+      "source": "assets/runtime/crew/components/salvage-legs.png",
+      "bytes": 136164
+    },
+    {
+      "definitionId": "crew-salvage-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/def93941faf48897a6cca6ae12d968102983fa683b088313ce83111606edf569.png",
+      "sha256": "def93941faf48897a6cca6ae12d968102983fa683b088313ce83111606edf569",
+      "source": "assets/runtime/crew/components/salvage-helmet.png",
+      "bytes": 168381
+    },
+    {
+      "definitionId": "crew-salvage-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/fea6327219a57f5780d8a778c029e44bb2a8065c034951064b82f49ef1d3674c.png",
+      "sha256": "fea6327219a57f5780d8a778c029e44bb2a8065c034951064b82f49ef1d3674c",
+      "source": "assets/runtime/crew/components/salvage-visor.png",
+      "bytes": 117725
+    },
+    {
+      "definitionId": "crew-salvage-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/salvage-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/181c488beb5afd808cdd9a8dae824b06039c0ed3b48f2e75989ae7e7e01d626e.png",
+      "sha256": "181c488beb5afd808cdd9a8dae824b06039c0ed3b48f2e75989ae7e7e01d626e",
+      "source": "assets/runtime/crew/components/salvage-shoulders.png",
+      "bytes": 91917
+    },
+    {
+      "definitionId": "crew-recon-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/6a4c79cb29071cbdbd5ebc05b1c2c0ee4cbec59652c9848c757353fd5cd55a80.png",
+      "sha256": "6a4c79cb29071cbdbd5ebc05b1c2c0ee4cbec59652c9848c757353fd5cd55a80",
+      "source": "assets/runtime/crew/components/recon-belt.png",
+      "bytes": 97429
+    },
+    {
+      "definitionId": "crew-recon-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/44bc303c3d3ed07cf3f381420d1e124903877b1cd871ddb47009271e3ec489ed.png",
+      "sha256": "44bc303c3d3ed07cf3f381420d1e124903877b1cd871ddb47009271e3ec489ed",
+      "source": "assets/runtime/crew/components/recon-boots.png",
+      "bytes": 121306
+    },
+    {
+      "definitionId": "crew-recon-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/358b055e8a1eed5859088a711b700af91574eaab478fff2954e852de0254b91d.png",
+      "sha256": "358b055e8a1eed5859088a711b700af91574eaab478fff2954e852de0254b91d",
+      "source": "assets/runtime/crew/components/recon-chest.png",
+      "bytes": 104460
+    },
+    {
+      "definitionId": "crew-recon-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/4ccfe411e00fe603323fdd1d518739ced081506ce2f8eaf73dfc371a4d577858.png",
+      "sha256": "4ccfe411e00fe603323fdd1d518739ced081506ce2f8eaf73dfc371a4d577858",
+      "source": "assets/runtime/crew/components/recon-back.png",
+      "bytes": 148691
+    },
+    {
+      "definitionId": "crew-recon-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/8ba0baaa522c79923199afb230f3147d7065d3f3d83dfa42c2d938a9b3aa42d2.png",
+      "sha256": "8ba0baaa522c79923199afb230f3147d7065d3f3d83dfa42c2d938a9b3aa42d2",
+      "source": "assets/runtime/crew/components/recon-gloves.png",
+      "bytes": 85291
+    },
+    {
+      "definitionId": "crew-recon-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/de7596e155df226e0f384dcbdb7f8f58adae9cee15bf3b7a652e2ff303d7f688.png",
+      "sha256": "de7596e155df226e0f384dcbdb7f8f58adae9cee15bf3b7a652e2ff303d7f688",
+      "source": "assets/runtime/crew/components/recon-legs.png",
+      "bytes": 125558
+    },
+    {
+      "definitionId": "crew-recon-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/38595ab876db9eca94a20ead5676878b5c1b7242f6e83838996d273c5505bd88.png",
+      "sha256": "38595ab876db9eca94a20ead5676878b5c1b7242f6e83838996d273c5505bd88",
+      "source": "assets/runtime/crew/components/recon-helmet.png",
+      "bytes": 140684
+    },
+    {
+      "definitionId": "crew-recon-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/0cc58da2599c6a14a4fe6403821eddae108a6c917347382d366144d097e00182.png",
+      "sha256": "0cc58da2599c6a14a4fe6403821eddae108a6c917347382d366144d097e00182",
+      "source": "assets/runtime/crew/components/recon-visor.png",
+      "bytes": 136441
+    },
+    {
+      "definitionId": "crew-recon-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/recon-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/424fad8860f01b176ff91d9f90f405f453c0518c2b8e4c7252509c4b94ef8190.png",
+      "sha256": "424fad8860f01b176ff91d9f90f405f453c0518c2b8e4c7252509c4b94ef8190",
+      "source": "assets/runtime/crew/components/recon-shoulders.png",
+      "bytes": 89640
+    },
+    {
+      "definitionId": "crew-scientist-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/8069484c81ecd43de07433a6f03d5da36017fe8b8265ea1402bbb139aee512c6.png",
+      "sha256": "8069484c81ecd43de07433a6f03d5da36017fe8b8265ea1402bbb139aee512c6",
+      "source": "assets/runtime/crew/components/scientist-belt.png",
+      "bytes": 99459
+    },
+    {
+      "definitionId": "crew-scientist-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/090c4f78a813fe2e5f1f713d1fff77db771a5b8d7370ef2f370b8b606b3de978.png",
+      "sha256": "090c4f78a813fe2e5f1f713d1fff77db771a5b8d7370ef2f370b8b606b3de978",
+      "source": "assets/runtime/crew/components/scientist-boots.png",
+      "bytes": 121090
+    },
+    {
+      "definitionId": "crew-scientist-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/b0b6091f541c502fea0d2814694baf9a3a2f5d5f130da4dea6e35b286536e2d1.png",
+      "sha256": "b0b6091f541c502fea0d2814694baf9a3a2f5d5f130da4dea6e35b286536e2d1",
+      "source": "assets/runtime/crew/components/scientist-chest.png",
+      "bytes": 113015
+    },
+    {
+      "definitionId": "crew-scientist-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/919c2133daa17916ad7b87d394f63d0c3b0e9da4eaaa94f428ff0938c83aa12c.png",
+      "sha256": "919c2133daa17916ad7b87d394f63d0c3b0e9da4eaaa94f428ff0938c83aa12c",
+      "source": "assets/runtime/crew/components/scientist-back.png",
+      "bytes": 141849
+    },
+    {
+      "definitionId": "crew-scientist-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/e17f1be513819f60b3620be775fb9447fa645993ae7d325d3d2fd9f34e2db3e7.png",
+      "sha256": "e17f1be513819f60b3620be775fb9447fa645993ae7d325d3d2fd9f34e2db3e7",
+      "source": "assets/runtime/crew/components/scientist-gloves.png",
+      "bytes": 84526
+    },
+    {
+      "definitionId": "crew-scientist-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/548a016dc99f8a16fac3ac5ec1db2d6f1df876da75ee1c6057e745f631e2b171.png",
+      "sha256": "548a016dc99f8a16fac3ac5ec1db2d6f1df876da75ee1c6057e745f631e2b171",
+      "source": "assets/runtime/crew/components/scientist-legs.png",
+      "bytes": 162201
+    },
+    {
+      "definitionId": "crew-scientist-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/scientist-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/c9aa671fef5d92811caa8c2e7f3e3f377cb8cf99051ef8df78116a4def70bf47.png",
+      "sha256": "c9aa671fef5d92811caa8c2e7f3e3f377cb8cf99051ef8df78116a4def70bf47",
+      "source": "assets/runtime/crew/components/scientist-shoulders.png",
+      "bytes": 86939
+    },
+    {
+      "definitionId": "crew-mechanic-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-back.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/0ea2f31ae83835cfad0d8b3e7cb375c227895015efa238511fb8f7d6247d7681.png",
+      "sha256": "0ea2f31ae83835cfad0d8b3e7cb375c227895015efa238511fb8f7d6247d7681",
+      "source": "assets/runtime/crew/components/mechanic-back.png",
+      "bytes": 148310
+    },
+    {
+      "definitionId": "crew-mechanic-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-belt.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/26460d6c4c09cbbb3da0be9bbed6978f5f45c4a8e844cb25f4ae28e17a89122f.png",
+      "sha256": "26460d6c4c09cbbb3da0be9bbed6978f5f45c4a8e844cb25f4ae28e17a89122f",
+      "source": "assets/runtime/crew/components/mechanic-belt.png",
+      "bytes": 108233
+    },
+    {
+      "definitionId": "crew-mechanic-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-boots.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/1aa3d511707449485aaae31decb73d805a576e8ccd1d22ffe540aeea6f69e7fe.png",
+      "sha256": "1aa3d511707449485aaae31decb73d805a576e8ccd1d22ffe540aeea6f69e7fe",
+      "source": "assets/runtime/crew/components/mechanic-boots.png",
+      "bytes": 121101
+    },
+    {
+      "definitionId": "crew-mechanic-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/71f1d85006da55970cfb6243418a3392a2121262976e55756148f16573f4357c.png",
+      "sha256": "71f1d85006da55970cfb6243418a3392a2121262976e55756148f16573f4357c",
+      "source": "assets/runtime/crew/components/mechanic-chest.png",
+      "bytes": 108208
+    },
+    {
+      "definitionId": "crew-mechanic-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-gloves.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/a372c0673117bc52f3643add3ad06a47fbeff5d715ffd2c9e8641ef7a6f35770.png",
+      "sha256": "a372c0673117bc52f3643add3ad06a47fbeff5d715ffd2c9e8641ef7a6f35770",
+      "source": "assets/runtime/crew/components/mechanic-gloves.png",
+      "bytes": 85847
+    },
+    {
+      "definitionId": "crew-mechanic-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-legs.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/3967f32cb918afc7267dea9035690cf078a926ccf27c840eff0c594f2c7dc301.png",
+      "sha256": "3967f32cb918afc7267dea9035690cf078a926ccf27c840eff0c594f2c7dc301",
+      "source": "assets/runtime/crew/components/mechanic-legs.png",
+      "bytes": 159409
+    },
+    {
+      "definitionId": "crew-mechanic-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/67563666cef2d187be83c3067cdca61495565d0179b608263ff2c8b0a64609e3.png",
+      "sha256": "67563666cef2d187be83c3067cdca61495565d0179b608263ff2c8b0a64609e3",
+      "source": "assets/runtime/crew/components/mechanic-helmet.png",
+      "bytes": 133907
+    },
+    {
+      "definitionId": "crew-mechanic-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/mechanic-shoulders.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/2914db2410df3d8997b0fa1469b311bd350d3f7ced51dbab2824320a313126a2.png",
+      "sha256": "2914db2410df3d8997b0fa1469b311bd350d3f7ced51dbab2824320a313126a2",
+      "source": "assets/runtime/crew/components/mechanic-shoulders.png",
+      "bytes": 92054
+    },
+    {
+      "definitionId": "crew-legacy-armor-expedition-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/legacy-armor-expedition-chest.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/4baeb27472ad61616b2f3bbae838618b300adbf499dfcd0fa6cd49a4186f72da.png",
+      "sha256": "4baeb27472ad61616b2f3bbae838618b300adbf499dfcd0fa6cd49a4186f72da",
+      "source": "assets/runtime/crew/components/legacy-armor-expedition-chest.png",
+      "bytes": 139582
+    },
+    {
+      "definitionId": "crew-legacy-helmet-explorer-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/legacy-helmet-explorer-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/14c33ed11780aedd8369777266e513805a881e95c2e85308f65323b97a837851.png",
+      "sha256": "14c33ed11780aedd8369777266e513805a881e95c2e85308f65323b97a837851",
+      "source": "assets/runtime/crew/components/legacy-helmet-explorer-helmet.png",
+      "bytes": 160365
+    },
+    {
+      "definitionId": "crew-legacy-helmet-explorer-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/legacy-helmet-explorer-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/b9f626cece0ec9ae5f1b33260dad0da655d814f017530a1cd9489f2edc0a65ea.png",
+      "sha256": "b9f626cece0ec9ae5f1b33260dad0da655d814f017530a1cd9489f2edc0a65ea",
+      "source": "assets/runtime/crew/components/legacy-helmet-explorer-visor.png",
+      "bytes": 118201
+    },
+    {
+      "definitionId": "crew-legacy-helmet-standard-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/legacy-helmet-standard-helmet.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/48577039d3fcd317db344ecdae18dc878fc19024ba8f9362d4167780132d7dd5.png",
+      "sha256": "48577039d3fcd317db344ecdae18dc878fc19024ba8f9362d4167780132d7dd5",
+      "source": "assets/runtime/crew/components/legacy-helmet-standard-helmet.png",
+      "bytes": 151829
+    },
+    {
+      "definitionId": "crew-legacy-visor-standard-visor",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/components/legacy-visor-standard-visor.png?revision=r002",
+      "resource": "res://InventoryUi/Icons/724f5cef43cb846134c3de3b9cf3883c2b5d7d118711088d18f108b434fbe9e4.png",
+      "sha256": "724f5cef43cb846134c3de3b9cf3883c2b5d7d118711088d18f108b434fbe9e4",
+      "source": "assets/runtime/crew/components/legacy-visor-standard-visor.png",
+      "bytes": 117977
+    },
+    {
+      "definitionId": "wardrobe-uniform-command",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/uniform-command.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/14f237231163b554e91861ff17c6ca120ca973971fed4b821ab0fe0d157b68fb.png",
+      "sha256": "14f237231163b554e91861ff17c6ca120ca973971fed4b821ab0fe0d157b68fb",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/uniform-command.png",
+      "bytes": 59504
+    },
+    {
+      "definitionId": "wardrobe-uniform-medical",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/uniform-medical.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/b297ec75fc9737ede65f801e5aa7128fba62c13e69ed73928734d2ea548c43ba.png",
+      "sha256": "b297ec75fc9737ede65f801e5aa7128fba62c13e69ed73928734d2ea548c43ba",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/uniform-medical.png",
+      "bytes": 57490
+    },
+    {
+      "definitionId": "wardrobe-uniform-engineering",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/uniform-engineering.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/7a9e1f6214f8288c2002e23050f7cd84407b70075c40492afca66bd0f63c532f.png",
+      "sha256": "7a9e1f6214f8288c2002e23050f7cd84407b70075c40492afca66bd0f63c532f",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/uniform-engineering.png",
+      "bytes": 57377
+    },
+    {
+      "definitionId": "wardrobe-uniform-security",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/uniform-security.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/724a996f2b06d6fd1cea9f22bf07401a833fc595b59db827254e150c7cf45694.png",
+      "sha256": "724a996f2b06d6fd1cea9f22bf07401a833fc595b59db827254e150c7cf45694",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/uniform-security.png",
+      "bytes": 60600
+    },
+    {
+      "definitionId": "wardrobe-t1-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-chest.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/301e7c8d9618db990100b580f8401891954b60d6f6ff75533f3bcdcbd5c2f860.png",
+      "sha256": "301e7c8d9618db990100b580f8401891954b60d6f6ff75533f3bcdcbd5c2f860",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-chest.png",
+      "bytes": 59496
+    },
+    {
+      "definitionId": "wardrobe-t1-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-shoulders.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/feaf70d0b7f85eb7c95a498609331bdf9ada09fa1978c499b56b3755aa4ff5fc.png",
+      "sha256": "feaf70d0b7f85eb7c95a498609331bdf9ada09fa1978c499b56b3755aa4ff5fc",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-shoulders.png",
+      "bytes": 48067
+    },
+    {
+      "definitionId": "wardrobe-t1-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-gloves.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/773bb45138e1a6cdb81e7cef1debeab716232db9b77922c070df7e342eef6339.png",
+      "sha256": "773bb45138e1a6cdb81e7cef1debeab716232db9b77922c070df7e342eef6339",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-gloves.png",
+      "bytes": 51957
+    },
+    {
+      "definitionId": "wardrobe-t1-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-belt.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/f02997a0f8fefd8a6a3a4a8dec08bc92764c3012603b202043e91a5a1e02488a.png",
+      "sha256": "f02997a0f8fefd8a6a3a4a8dec08bc92764c3012603b202043e91a5a1e02488a",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-belt.png",
+      "bytes": 48390
+    },
+    {
+      "definitionId": "wardrobe-t1-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-legs.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/1bf64855ee2c8b8b6b06a672886fded2f3fa8244e36ad607347e7cb928472592.png",
+      "sha256": "1bf64855ee2c8b8b6b06a672886fded2f3fa8244e36ad607347e7cb928472592",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-legs.png",
+      "bytes": 43175
+    },
+    {
+      "definitionId": "wardrobe-t1-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-boots.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/8ff6c42338ac22dcaad27f8396374208d68598ea07c6df32c97220493abdcf58.png",
+      "sha256": "8ff6c42338ac22dcaad27f8396374208d68598ea07c6df32c97220493abdcf58",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-boots.png",
+      "bytes": 52517
+    },
+    {
+      "definitionId": "wardrobe-t1-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t1-back.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/46468242ecb6ef596d4bea63bb89495981add989b84fe2e1a78717e69213dc0f.png",
+      "sha256": "46468242ecb6ef596d4bea63bb89495981add989b84fe2e1a78717e69213dc0f",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t1-back.png",
+      "bytes": 57682
+    },
+    {
+      "definitionId": "wardrobe-t2-chest",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-chest.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/ced4463fe2a7c279704779d44130505cd2fb03e248aa88338804ebccb0f2fb93.png",
+      "sha256": "ced4463fe2a7c279704779d44130505cd2fb03e248aa88338804ebccb0f2fb93",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-chest.png",
+      "bytes": 60184
+    },
+    {
+      "definitionId": "wardrobe-t2-shoulders",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-shoulders.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/6bf0a8b71fd0386766f924e1409c619c3d451014a848dd018bdc6b5f8c2c496b.png",
+      "sha256": "6bf0a8b71fd0386766f924e1409c619c3d451014a848dd018bdc6b5f8c2c496b",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-shoulders.png",
+      "bytes": 52480
+    },
+    {
+      "definitionId": "wardrobe-t2-gloves",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-gloves.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/92e5e33546c116d2ffd1ee2c5fb32685076587a5bba1e542ac472998e744cc82.png",
+      "sha256": "92e5e33546c116d2ffd1ee2c5fb32685076587a5bba1e542ac472998e744cc82",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-gloves.png",
+      "bytes": 55402
+    },
+    {
+      "definitionId": "wardrobe-t2-belt",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-belt.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/caf0e6c8351d8d81e588712af1d229051a16331fbfff9ae83bc9b7a2e9df5693.png",
+      "sha256": "caf0e6c8351d8d81e588712af1d229051a16331fbfff9ae83bc9b7a2e9df5693",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-belt.png",
+      "bytes": 50054
+    },
+    {
+      "definitionId": "wardrobe-t2-legs",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-legs.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/cc603442b6e93a76e27e405c28216a240b32deabc0d8e069019e0c352e9cc3a5.png",
+      "sha256": "cc603442b6e93a76e27e405c28216a240b32deabc0d8e069019e0c352e9cc3a5",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-legs.png",
+      "bytes": 46881
+    },
+    {
+      "definitionId": "wardrobe-t2-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-boots.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/026e57f8b2028da5e2d4e82af389e82a1fbc4a5e48b346130f5c83f704623199.png",
+      "sha256": "026e57f8b2028da5e2d4e82af389e82a1fbc4a5e48b346130f5c83f704623199",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-boots.png",
+      "bytes": 52936
+    },
+    {
+      "definitionId": "wardrobe-t2-back",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/t2-back.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/804c8522fc0d999c14519694dcb2f6f369598a1e20a369dce932e16ee25606e5.png",
+      "sha256": "804c8522fc0d999c14519694dcb2f6f369598a1e20a369dce932e16ee25606e5",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/t2-back.png",
+      "bytes": 61469
+    },
+    {
+      "definitionId": "wardrobe-suit-body",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/suit-body.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/729c0c25dbe85ed5f76a6638df1c8220456da70bb61b761220b227b9a21356f2.png",
+      "sha256": "729c0c25dbe85ed5f76a6638df1c8220456da70bb61b761220b227b9a21356f2",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/suit-body.png",
+      "bytes": 58091
+    },
+    {
+      "definitionId": "wardrobe-suit-helmet",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/suit-helmet.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/55a59613d54b4f98c6d1146972c7bf878f5b9f3e0b1d4e113783d33067da3bae.png",
+      "sha256": "55a59613d54b4f98c6d1146972c7bf878f5b9f3e0b1d4e113783d33067da3bae",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/suit-helmet.png",
+      "bytes": 51067
+    },
+    {
+      "definitionId": "wardrobe-suit-pack",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/suit-pack.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/1b97211a528e590f951ec0d087df9be8a60fadce9ba862f9d37c714db5ffdf33.png",
+      "sha256": "1b97211a528e590f951ec0d087df9be8a60fadce9ba862f9d37c714db5ffdf33",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/suit-pack.png",
+      "bytes": 59215
+    },
+    {
+      "definitionId": "wardrobe-suit-boots",
+      "itemRevision": 1,
+      "iconUrl": "/assets/crew/wardrobe/r001/icons/suit-boots.png?revision=r001",
+      "resource": "res://InventoryUi/Icons/78bd01870de8381e42440b88413e67ab1a191daf5fbe520c09ecf847299a260e.png",
+      "sha256": "78bd01870de8381e42440b88413e67ab1a191daf5fbe520c09ecf847299a260e",
+      "source": "assets/runtime/crew/wardrobe/r001/icons/suit-boots.png",
+      "bytes": 53619
+    }
+  ],
+  "demoAliases": {
+    "demo-rifle": "carbine",
+    "demo-tool": "multi-tool",
+    "demo-medkit": "medkit",
+    "demo-battery": "power-cell",
+    "demo-helmet": "wardrobe-suit-helmet",
+    "demo-backpack": "field-pack",
+    "demo-suit": "wardrobe-suit-body"
+  }
+}

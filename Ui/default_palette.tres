@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SiderealPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Ui/SiderealPalette.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Surface = Color(0.01961, 0.09020, 0.21176, 1)
+Accent = Color(0.27843, 0.87451, 1, 1)
+Text = Color(0.93725, 0.96471, 1, 1)
+Muted = Color(0.65490, 0.77255, 0.90980, 1)
+Health = Color(1, 0.27058824, 0.41568627, 1)
+Opacity = 0.94
+UiScale = 1.0

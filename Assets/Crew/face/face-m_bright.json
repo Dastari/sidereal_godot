@@ -1,0 +1,270 @@
+{
+ "schema": "sidereal.crew.face-atlas/1",
+ "variant": "m_bright",
+ "status": "crew study v2 proposal (Orion Crest style); not owner-approved",
+ "cell": 16,
+ "layers": [
+  "under",
+  "age",
+  "marks",
+  "eyes",
+  "iris",
+  "glint",
+  "brows",
+  "mouth",
+  "over"
+ ],
+ "frames": {
+  "under": [
+   "none",
+   "blush",
+   "blush_strong"
+  ],
+  "age": [
+   "none",
+   "lines",
+   "older"
+  ],
+  "marks": [
+   "none",
+   "freckles",
+   "scar",
+   "scratch",
+   "tattoo",
+   "bandage",
+   "dirt",
+   "warpaint",
+   "cyber",
+   "birthmark"
+  ],
+  "eyes": [
+   "open",
+   "half",
+   "closed",
+   "wide",
+   "narrow",
+   "happy",
+   "sad",
+   "tight",
+   "ko",
+   "sleepy",
+   "wink"
+  ],
+  "iris": [
+   "none",
+   "open@c",
+   "wide@c",
+   "open@l",
+   "wide@l",
+   "open@r",
+   "wide@r"
+  ],
+  "glint": [
+   "none",
+   "open@c",
+   "wide@c",
+   "open@l",
+   "wide@l",
+   "open@r",
+   "wide@r"
+  ],
+  "brows": [
+   "none",
+   "neutral",
+   "raised",
+   "angry",
+   "sad",
+   "confused",
+   "smug",
+   "stern"
+  ],
+  "mouth": [
+   "neutral",
+   "small",
+   "smile",
+   "grin",
+   "frown",
+   "flat",
+   "grit",
+   "smug",
+   "wavy",
+   "o_small",
+   "v_closed",
+   "v_A",
+   "v_E",
+   "v_O",
+   "v_MB"
+  ],
+  "over": [
+   "none",
+   "sweat",
+   "tears",
+   "anger",
+   "zzz",
+   "swirl"
+  ]
+ },
+ "expressions": {
+  "neutral": {
+   "eyes": "open",
+   "iris": "open",
+   "brows": "neutral",
+   "mouth": "neutral",
+   "under": "blush",
+   "over": "none"
+  },
+  "happy": {
+   "eyes": "happy",
+   "iris": "none",
+   "brows": "raised",
+   "mouth": "smile",
+   "under": "blush_strong",
+   "over": "none"
+  },
+  "sad": {
+   "eyes": "sad",
+   "iris": "open",
+   "brows": "sad",
+   "mouth": "frown",
+   "under": "blush",
+   "over": "tears"
+  },
+  "angry": {
+   "eyes": "narrow",
+   "iris": "none",
+   "brows": "angry",
+   "mouth": "flat",
+   "under": "blush",
+   "over": "anger"
+  },
+  "surprised": {
+   "eyes": "wide",
+   "iris": "wide",
+   "brows": "raised",
+   "mouth": "o_small",
+   "under": "blush",
+   "over": "none"
+  },
+  "confused": {
+   "eyes": "open",
+   "iris": "open",
+   "brows": "confused",
+   "mouth": "wavy",
+   "under": "blush",
+   "over": "sweat"
+  },
+  "hurt": {
+   "eyes": "tight",
+   "iris": "none",
+   "brows": "sad",
+   "mouth": "grit",
+   "under": "blush",
+   "over": "sweat"
+  },
+  "determined": {
+   "eyes": "narrow",
+   "iris": "none",
+   "brows": "angry",
+   "mouth": "flat",
+   "under": "blush",
+   "over": "none"
+  },
+  "scared": {
+   "eyes": "wide",
+   "iris": "wide",
+   "brows": "sad",
+   "mouth": "o_small",
+   "under": "blush",
+   "over": "sweat"
+  },
+  "smug": {
+   "eyes": "half",
+   "iris": "none",
+   "brows": "smug",
+   "mouth": "smug",
+   "under": "blush",
+   "over": "none"
+  },
+  "sleepy": {
+   "eyes": "sleepy",
+   "iris": "none",
+   "brows": "neutral",
+   "mouth": "small",
+   "under": "blush",
+   "over": "zzz"
+  },
+  "knocked_out": {
+   "eyes": "ko",
+   "iris": "none",
+   "brows": "none",
+   "mouth": "o_small",
+   "under": "none",
+   "over": "swirl"
+  },
+  "wink": {
+   "eyes": "wink",
+   "iris": "open",
+   "brows": "raised",
+   "mouth": "smile",
+   "under": "blush_strong",
+   "over": "none"
+  },
+  "grin": {
+   "eyes": "happy",
+   "iris": "none",
+   "brows": "raised",
+   "mouth": "grin",
+   "under": "blush_strong",
+   "over": "none"
+  },
+  "stern": {
+   "eyes": "narrow",
+   "iris": "open",
+   "brows": "stern",
+   "mouth": "flat",
+   "under": "blush",
+   "over": "none"
+  }
+ },
+ "aliases": {
+  "pain": "hurt"
+ },
+ "visemes": {
+  "closed": "v_closed",
+  "A": "v_A",
+  "E": "v_E",
+  "O": "v_O",
+  "MB": "v_MB"
+ },
+ "blink": [
+  {
+   "eyes": "half",
+   "seconds": 0.041666666666666664
+  },
+  {
+   "eyes": "closed",
+   "seconds": 0.041666666666666664
+  },
+  {
+   "eyes": "half",
+   "seconds": 0.041666666666666664
+  }
+ ],
+ "blinkSuppressedEyes": [
+  "closed",
+  "happy",
+  "sleepy",
+  "ko",
+  "tight",
+  "wink"
+ ],
+ "looks": {
+  "-1": "r",
+  "0": "c",
+  "1": "l"
+ },
+ "tints": {
+  "iris": "eye",
+  "brows": "hair*0.6"
+ }
+}

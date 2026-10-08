@@ -1,0 +1,7 @@
+{
+  "gameOrigin": "https://sidereal.tail7a58a6.ts.net:8447",
+  "database": "sidereal-spacetime-dev",
+  "issuer": "https://auth.dastari.net/realms/dastari",
+  "clientId": "sidereal-game",
+  "callbackPort": 43817
+}

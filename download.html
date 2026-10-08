@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidereal native client</title>
+<style>
+:root{color-scheme:dark;--space:#07121e;--well:#142936;--line:#345360;--ink:#d9e7e8;--glass:#71d0c1;--amber:#e0b779}
+*{box-sizing:border-box}body{margin:0;background:var(--space);color:var(--ink);font:18px/1.55 'Segoe UI',sans-serif}main{max-width:980px;margin:auto;padding:70px 32px}header{border-bottom:1px solid var(--line);padding-bottom:25px;margin-bottom:45px}h1{font-weight:500;letter-spacing:-.045em;font-size:clamp(42px,8vw,76px);line-height:1.05;margin:0 0 24px}p{max-width:660px}a{color:var(--glass)}.download{display:inline-block;background:var(--glass);color:var(--space);padding:15px 24px;margin:12px 0;font-weight:600;text-decoration:none}.download:hover,.download:focus-visible{background:var(--ink);outline:3px solid var(--line)}h2{font-size:24px;font-weight:500;margin-top:38px}li{margin:12px 0}.state{color:var(--amber)}.resources{display:flex;flex-wrap:wrap;gap:24px;border-top:1px solid var(--line);margin-top:40px;padding-top:24px}code{background:var(--well);padding:3px 6px;font-size:15px}
+</style>
+<main>
+<header><h1>Sidereal, in Godot.</h1><p>A native client connected to the same authoritative world. Your server and database remain on Sidereal; this build runs locally on Windows.</p></header>
+<a class="download" href="Sidereal-windows-x64.zip">Download for Windows x64</a>
+<p class="state">Native evaluation 0.4.4. Includes Dastari sign-in, character entry, walking, piloting, contextual interaction, combat and EVA input, Tetris inventory, equipment, scoped storage and tooltips. Shared windows resize and move; theme, display and graphics preferences are saved locally. Login and crew selection use a 3D dock. Released crew models, armor, faces and animations appear in the world and paper doll. Known stock ships render their replicated layout; shared space includes disclosed vessels, reviewed planet/moon appearances, starfield, dust and accepted engine exhaust. This update adds responsive personal-storage tabs and named container headers. Click a tab to inspect storage, or drop a held item on a tab or header to request transfer to that exact container. Requests require matching server acknowledgements and fresh accepted rows. Click-to-hold, rotation, drag placement, double-click equip/stow, Shift transfer and two-stage cargo equip remain included. Source-matched sky colors, smooth motion and responsive paired windows remain included. Stars/dust blending, family lighting/tone, some effects and editing interfaces, custom construction, asset streaming and Windows/GPU acceptance remain open. See the <a href="https://wiki.sidereal.dastari.net/Architecture/Godot%20Browser%20Parity">parity record</a> for verified behavior and remaining work.</p>
+<h2>Run on Windows</h2>
+<ol>
+<li>Connect Tailscale using the account that has access to the Sidereal server.</li>
+<li>Download the ZIP, then use <strong>Extract all</strong>. Keep every extracted file and folder together.</li>
+<li>Open <strong>Sidereal.exe</strong>. The exported game includes its runtime; you do not need to install Godot or .NET.</li>
+<li>Select <strong>Sign in with Dastari</strong>, complete sign-in in your browser, then return to the game and select <strong>Resume character</strong> or <strong>Enter world</strong>.</li>
+<li>Use <strong>WASD</strong> to walk or pilot, Shift to sprint, E to use nearby objects or a control seat, and X for cruise or EVA suit hold. V toggles combat; aim with the mouse, click to fire and R to reload.</li>
+<li>Use <strong>I</strong> for inventory, <strong>C</strong> for character, <strong>N</strong> for navigation and Tab for deck/flight view. Drag items and press R while dragging to rotate. Keys 1–5 invoke assigned item actions; 9/0 inspect quick items.</li>
+<li><strong>Escape</strong> cancels or opens the six-tab system menu. Display and Graphics save local preferences. Right drag and the wheel control the camera outside interface panels.</li>
+</ol>
+<p>Use the same Dastari account as the browser game to retain your character. Taking control transfers input between clients on that account. Windows execution and GPU performance still need verification on your machine.</p>
+<h2>Edit the project</h2>
+<p>For ongoing development, clone <a href="https://github.com/Dastari/sidereal_godot/tree/feat/native-spacetimedb-client">Dastari/sidereal_godot</a> and check out <code>feat/native-spacetimedb-client</code>. Install <a href="https://godotengine.org/download/archive/4.7.2-stable/">Godot 4.7.2 .NET</a> and <a href="https://dotnet.microsoft.com/en-us/download/dotnet/8.0">.NET SDK 8.0.425</a>, then import the root <code>project.godot</code>. The standard Godot build cannot compile this C# client.</p>
+<p>The source ZIP is an editor snapshot containing <code>Sidereal/project.godot</code>. Clone Git for the test and lifecycle scripts and for exchanging AI changes with editor work. Save and commit local work before pulling.</p>
+<p>The Toby-Legion agent can use the <a href="https://wiki.sidereal.dastari.net/Operations/Godot%20Windows%20Development%20and%20Tailscale%20Testing">Windows/Tailscale test runbook</a> and <a href="client-settings.network-test.json">isolated test configuration</a> to verify real sign-in and reducers from Windows.</p>
+<nav class="resources" aria-label="Additional downloads">
+<a href="Sidereal-Godot-Source.zip">Godot project source</a>
+<a href="Sidereal-linux-x64.zip">Linux x64 build</a>
+<a href="SHA256SUMS.txt">Download checksums</a>
+<a href="https://wiki.sidereal.dastari.net/Architecture/Godot%20Frontend%20Evaluation">Migration investigation and setup</a>
+</nav>
+</main>
+</html>

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.10.0" />
+    <Compile Include="../ClientCore.cs" Link="ClientCore.cs" />
+    <Compile Include="../ClientCore.Gameplay.cs" Link="ClientCore.Gameplay.cs" />
+    <Compile Include="../NativeAuth.cs" Link="NativeAuth.cs" />
+    <Compile Include="../NativePreferences.cs" Link="NativePreferences.cs" />
+    <Compile Include="../Input/**/*.cs" Link="Input/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../InventoryModel.cs" Link="InventoryModel.cs" />
+    <Compile Include="../InventoryCargoPlan.cs" Link="InventoryCargoPlan.cs" />
+    <Compile Include="../Presentation/ReplicatedWorldCatalog.cs" Link="ReplicatedWorldCatalog.cs" />
+    <Compile Include="../Presentation/ReplicatedWorldSurface.cs" Link="ReplicatedWorldSurface.cs" />
+    <Compile Include="../Presentation/SpaceMath.cs" Link="SpaceMath.cs" />
+    <Compile Include="../Presentation/SourceLightUnitsRules.cs" Link="SourceLightUnitsRules.cs" />
+    <Compile Include="../Presentation/SourceDisplaySpaceRules.cs" Link="SourceDisplaySpaceRules.cs" />
+    <Compile Include="../Presentation/SpaceMotionHistory.cs" Link="SpaceMotionHistory.cs" />
+    <Content Include="../Assets/World/manifest.json" Link="world-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/World/surface-golden.json" Link="surface-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/World/camera-golden.json" Link="camera-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Environment/manifest.json" Link="environment-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Environment/golden.json" Link="environment-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Combat/manifest.json" Link="combat-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Combat/golden.json" Link="combat-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/catalog.json" Link="crew-catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/semantics.json" Link="crew-semantics.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/golden.json" Link="crew-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/anim/crew-anims.glb.bin" Link="crew-anims.glb.bin" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/face/*.json" Link="face/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Assets/Crew/face/*.bin" Link="face/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="space-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/owned-motion-golden.json" Link="owned-motion-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/owned-yaw-golden.json" Link="owned-yaw-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures/source-sky-lut-golden.json" Link="source-sky-lut-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../InventoryUi/item-seed-v1.json" Link="item-seed-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../Bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
