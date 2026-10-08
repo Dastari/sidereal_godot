@@ -74,13 +74,23 @@ public partial class InventoryInteractionView : Control
                 window.GetFlag(Window.Flags.NoFocus),window.GetFlag(Window.Flags.MousePassthrough))||ModalVisible(child))return true;
         return false;
     }
-    private static void HidePassiveTooltips(Node node)
+    private static void CancelPassiveTooltips(Node node,HashSet<Viewport>? cancelled=null)
     {
+        cancelled??=new();
         foreach(var child in node.GetChildren())
         {
-            if(child is Window {Visible:true} window&&!InventoryInteraction.BlocksPopup(true,window is PopupPanel,window.Exclusive,
-                window.GetFlag(Window.Flags.NoFocus),window.GetFlag(Window.Flags.MousePassthrough)))window.Hide();
-            HidePassiveTooltips(child);
+            if(child is Window {Visible:true} window&&!window.IsQueuedForDeletion()&&!InventoryInteraction.BlocksPopup(true,window is PopupPanel,window.Exclusive,
+                window.GetFlag(Window.Flags.NoFocus),window.GetFlag(Window.Flags.MousePassthrough)))
+            {
+                // Godot owns the cached tooltip and its timer. Hiding or freeing its
+                // PopupPanel bypasses that ownership (and can touch an already queued popup).
+                // 4.7.2 has no bound cancel_tooltip API; the public hover boundary
+                // invokes the owner's cancellation without input or keyboard/press focus changes.
+                var viewport=window.GetParent().GetViewport();
+                if(cancelled.Add(viewport)&&viewport.GuiGetHoveredControl()!=null)
+                {viewport.NotifyMouseExited();viewport.NotifyMouseEntered();}
+            }
+            CancelPassiveTooltips(child,cancelled);
         }
     }
     internal Rect2 InView(Control control,Rect2 local)
@@ -192,7 +202,7 @@ public partial class InventoryInteractionView : Control
         }
         if(!SourceStillCurrent())CancelLocal("Inventory or storage changed. Choose the current item again.");
         candidate=State.Gesture is (InventoryGesture.Held or InventoryGesture.Dragging)?CandidateAt(Pointer):null;
-        if(Capturing||Animating||core.InventoryPending)HidePassiveTooltips(GetParent());
+        if(Capturing||Animating||core.InventoryPending)CancelPassiveTooltips(GetParent());
         var paintActive=Capturing||Animating;
         if(paintActive||paintWasActive)QueueRedraw();
         paintWasActive=paintActive;
