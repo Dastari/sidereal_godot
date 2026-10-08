@@ -109,6 +109,18 @@ internal static class Program
             File.WriteAllText(Path.Combine(scratch, "client-settings.network-test.json"), JsonSerializer.Serialize(fixture with { Issuer = "https://other-provider.example/realm" }));
             profiles = ObserverProfiles.Load(scratch);
             Require(profiles.Items.Count == 1 && profiles.Notice.Length > 0, "fixture cannot swap Dastari provider");
+            foreach (var invalid in new[] {
+                live with { GameOrigin = "http://untrusted.example" }, live with { Issuer = "http://untrusted.example" },
+                live with { ClientId = "other-client" }, live with { CallbackPort = 1234 }, live with { Database = " " } })
+            {
+                File.WriteAllText(Path.Combine(scratch, "client-settings.json"), JsonSerializer.Serialize(invalid));
+                profiles = ObserverProfiles.Load(scratch);
+                Require(profiles.Items.Count == 0 && profiles.Notice.Length > 0, "untyped editor reader retains canonical settings validation");
+            }
+            File.WriteAllText(Path.Combine(scratch, "client-settings.json"), "{}");
+            Require(ObserverProfiles.Load(scratch).Items.Count == 0, "missing required editor fields are rejected");
+            File.WriteAllText(Path.Combine(scratch, "client-settings.json"), JsonSerializer.Serialize(live).Replace(":43817", ":43817.5"));
+            Require(ObserverProfiles.Load(scratch).Items.Count == 0, "fractional callback is rejected");
         }
         finally { Directory.Delete(scratch, true); }
         Console.WriteLine($"World editor observer: {assertions} independent lifecycle/profile assertions passed.");
