@@ -1,4 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
+  <PropertyGroup>
+    <!-- Keep generated C# outside the parent Tests project's recursive source glob. -->
+    <BaseIntermediateOutputPath>../../.runtime/world-editor-tests/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>../../.runtime/world-editor-tests/bin/</BaseOutputPath>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -12,4 +18,5 @@
     <Compile Include="../../addons/sidereal_world_editor/WorldObserver.cs" Link="WorldObserver.cs" />
     <Compile Include="../../addons/sidereal_world_editor/ObserverProfiles.cs" Link="ObserverProfiles.cs" />
   </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>
