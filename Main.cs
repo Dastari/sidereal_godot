@@ -25,6 +25,7 @@ public partial class Main : Node3D
     private GameWindowController? windowController;
     private SpaceCombatEffects combatEffects = null!;
     private readonly GameplayKeyState gameplayKeys = new();
+    private readonly GameplayKeyState windowShortcutKeys = new();
     private ulong gameplayEpoch;
     private bool keyboardWasAllowed, orbiting;
     private NativePreferencesSnapshot? appliedPreferences;
@@ -248,10 +249,16 @@ public partial class Main : Node3D
 
     public override void _Input(InputEvent input)
     {
-        if (input is InputEventKey { Pressed: true, Echo: false } shortcut &&
+        if (input is InputEventKey { Pressed: true } shortcut &&
             (shortcut.PhysicalKeycode == Key.F11 || shortcut.AltPressed && shortcut.PhysicalKeycode == Key.Enter))
-        { windowController?.Toggle(); GetViewport().SetInputAsHandled(); return; }
-        if (input is InputEventKey { Pressed: false } key) gameplayKeys.Release(key.PhysicalKeycode.ToString());
+        {
+            // Native mode changes can reset the platform's Echo flag while a key
+            // remains held. One physical press owns one transition until release.
+            if (!shortcut.Echo && windowShortcutKeys.Press(shortcut.PhysicalKeycode.ToString(), true)) windowController?.Toggle();
+            GetViewport().SetInputAsHandled(); return;
+        }
+        if (input is InputEventKey { Pressed: false } key)
+        { windowShortcutKeys.Release(key.PhysicalKeycode.ToString()); gameplayKeys.Release(key.PhysicalKeycode.ToString()); }
         if (input is InputEventMouseButton { Pressed: false } button)
         {
             if (button.ButtonIndex == MouseButton.Right) orbiting = false;
