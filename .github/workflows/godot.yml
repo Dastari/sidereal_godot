@@ -20,3 +20,5 @@ jobs:
       - run: dotnet build Sidereal.Godot.csproj --no-restore
       - run: dotnet restore Tests/Tests.csproj --locked-mode
       - run: dotnet run --project Tests/Tests.csproj --no-restore
+      - run: dotnet restore Tests/WorldEditor/WorldEditor.Tests.csproj --locked-mode
+      - run: dotnet run --project Tests/WorldEditor/WorldEditor.Tests.csproj --no-restore
