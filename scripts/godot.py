@@ -1,4 +1,4 @@
-"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.4)."""
+"""Native evaluation lifecycle, invoked only through scripts/dev.py (v0.4.5)."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -204,6 +204,7 @@ def source_bundle(downloads=DOWNLOADS):
     # An explicit allowlist prevents local credentials/cache from entering downloads.
     names = ('README.md', 'project.godot', 'Main.tscn', 'Main.cs', 'Main.cs.uid', 'ClientCore.cs', 'ClientCore.Gameplay.cs',
              'NativeAuth.cs', 'NativePreferences.cs', 'InventoryModel.cs', 'InventoryCargoPlan.cs', 'PresentationDisplay.cs',
+             'GameWindowController.cs',
              'Sidereal.Godot.csproj', 'Sidereal.Godot.sln', 'global.json', 'client-settings.json',
              'export_presets.cfg')
     target = downloads / 'Sidereal-Godot-Source.zip'

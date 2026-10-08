@@ -2,13 +2,14 @@ config_version=5
 
 [application]
 config/name="Sidereal Native — Evaluation"
-config/version="0.4.4"
+config/version="0.4.5"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=800
+window/size/resizable=true
 window/stretch/mode="disabled"
 
 [editor]

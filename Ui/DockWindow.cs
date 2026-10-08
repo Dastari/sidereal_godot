@@ -56,7 +56,21 @@ public partial class DockWindow : Control
     }
 
     private void PaletteChanged() => QueueRedraw();
-    private void ParentResized() { Clamp(); LayoutContents(); }
+    private void ParentResized()
+    {
+        Clamp(); LayoutContents();
+        // SiderealUi assigns its new window bounds after resizing this parent.
+        CallDeferred(nameof(FitPreferredLayout));
+    }
+    private void FitPreferredLayout()
+    {
+        if (!IsInsideTree() || IsQueuedForDeletion()) return;
+        if (!InteractionActive && !TemporaryLayout)
+        {
+            Position = PreferredPosition; Size = PreferredSize;
+        }
+        Clamp(); LayoutContents();
+    }
     private void LayoutContents()
     {
         if (title == null) return;
@@ -125,7 +139,7 @@ public partial class DockWindow : Control
     {
         if (!InteractionActive) return;
         if (input is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false })
-        { dragging = false; edges = 0; Clamp(); SaveLayout(); GetViewport().SetInputAsHandled(); }
+        { dragging = false; edges = 0; Clamp(); SaveLayout(adoptDisplayedGeometry: true); GetViewport().SetInputAsHandled(); }
         else if (input is InputEventMouseMotion)
         {
             var delta = GetParent<Control>().GetLocalMousePosition() - mouseStart;
@@ -170,7 +184,7 @@ public partial class DockWindow : Control
         preferredPosition = InitialPosition; preferredSize = InitialSize;
         Position = InitialPosition; Size = InitialSize; Clamp(); SaveLayout();
     }
-    public void CancelInteraction(){if(!InteractionActive)return;dragging=false;edges=0;Clamp();SaveLayout();}
+    public void CancelInteraction(){if(!InteractionActive)return;dragging=false;edges=0;Clamp();SaveLayout(adoptDisplayedGeometry: true);}
     public void Close(){CancelInteraction();Hide();SaveLayout();Closed?.Invoke();}
     private void LoadLayout()
     {
@@ -188,9 +202,10 @@ public partial class DockWindow : Control
         }
         preferredPosition = Position; preferredSize = Size; preferredLoaded = true; Clamp();
     }
-    private void SaveLayout()
+    private void SaveLayout(bool adoptDisplayedGeometry = false)
     {
-        if (HasUserLayout) { preferredPosition = Position; preferredSize = Size; }
+        // Viewport clamping is temporary; only a deliberate drag/resize adopts it.
+        if (HasUserLayout && adoptDisplayedGeometry) { preferredPosition = Position; preferredSize = Size; }
         var file = new ConfigFile(); file.Load("user://ui-layout.cfg");
         file.SetValue(LayoutKey, "position", PreferredPosition); file.SetValue(LayoutKey, "size", PreferredSize);
         file.SetValue(LayoutKey, "user_layout", HasUserLayout); file.Save("user://ui-layout.cfg");

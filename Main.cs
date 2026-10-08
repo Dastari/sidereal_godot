@@ -22,8 +22,11 @@ public partial class Main : Node3D
     private FrontendBackdrop backdrop = null!;
     private ReplicatedWorld world = null!;
     private PresentationDisplay display = null!;
+    private GameWindowController? windowController;
     private SpaceCombatEffects combatEffects = null!;
     private readonly GameplayKeyState gameplayKeys = new();
+    private readonly GameplayKeyState windowShortcutKeys = new();
+    private bool windowShortcutFocusReturned;
     private ulong gameplayEpoch;
     private bool keyboardWasAllowed, orbiting;
     private NativePreferencesSnapshot? appliedPreferences;
@@ -81,9 +84,11 @@ public partial class Main : Node3D
         ui.ObserveBodyRequested += id => { ClearGameplayInput(); world.ObserveBody(id); };
         core.OpenStorageRequested += id => { ClearGameplayInput(); ui.OpenContainer(id); };
         core.PresentationViewChanged += () => { ClearGameplayInput(); world.SetViewMode(core.InteriorView); ui.SetViewMode(core.InteriorView); };
+        windowController = new GameWindowController(GetWindow(), () =>
+        { ClearGameplayInput(); ui.CancelInteractions(preserveKeyboardFocus: true); });
         if (uiSmoke) core.Connect("", provider: false);
         GetWindow().FocusExited += () => { focused = false; ClearGameplayInput(); ui.CancelInteractions(); };
-        GetWindow().FocusEntered += () => focused = true;
+        GetWindow().FocusEntered += () => { focused = true; windowShortcutFocusReturned = true; };
     }
 
     private void BuildWorld()
@@ -111,6 +116,15 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        if (focused && windowShortcutFocusReturned)
+        {
+            windowShortcutFocusReturned = false;
+            // A release in another native window has no _Input event here. Wait
+            // until input is drained, retaining shortcuts still physically held.
+            foreach (var key in new[] { Key.F11, Key.Enter })
+                if (!Godot.Input.IsPhysicalKeyPressed(key)) windowShortcutKeys.Release(key.ToString());
+        }
+        windowController?.Observe();
         if (diagnosticQuitPath != null && File.Exists(diagnosticQuitPath))
         { ClearGameplayInput(); ui.CancelInteractions(); GetTree().Quit(); return; }
         while (browserUrls.TryDequeue(out var url)) if (!signingOut) OS.ShellOpen(url);
@@ -200,6 +214,9 @@ public partial class Main : Node3D
                 key = smokeLastKey, ui = ui.SmokeFacts(), world = new { world.Status, world.LoadedAssetCount, world.RenderedPlacementCount, missing = world.MissingAssetIds,
                     projected = new { x = world.ProjectedShipBounds.Position.X, y = world.ProjectedShipBounds.Position.Y, width = world.ProjectedShipBounds.Size.X, height = world.ProjectedShipBounds.Size.Y } },
                 space = world.SpaceFacts, preferences = NativePreferences.Current.Snapshot,
+                window = new { mode = GetWindow().Mode.ToString(), size = new { x = GetWindow().Size.X, y = GetWindow().Size.Y },
+                    viewport = new { x = GetViewport().GetVisibleRect().Size.X, y = GetViewport().GetVisibleRect().Size.Y },
+                    stretch = GetWindow().ContentScaleMode.ToString(), fullscreenSupported = windowController?.Supported },
                 effects = new {combatEffects.AcceptedShots,combatEffects.AcceptedImpacts,combatEffects.LiveCount,combatEffects.PendingCount,missing=combatEffects.MissingAssets},
                 gameplay = new { core.GameplayEpoch, core.SharedWorldEpoch, core.SpatialReady, core.SpatialCellSets, core.InteriorView,
                     core.CombatEnabled, core.CruiseActive, core.GameplayPending, core.GameplayMessage,
@@ -241,7 +258,16 @@ public partial class Main : Node3D
 
     public override void _Input(InputEvent input)
     {
-        if (input is InputEventKey { Pressed: false } key) gameplayKeys.Release(key.PhysicalKeycode.ToString());
+        if (input is InputEventKey { Pressed: true } shortcut &&
+            (shortcut.PhysicalKeycode == Key.F11 || shortcut.AltPressed && shortcut.PhysicalKeycode == Key.Enter))
+        {
+            // Native mode changes can reset the platform's Echo flag while a key
+            // remains held. One physical press owns one transition until release.
+            if (!shortcut.Echo && windowShortcutKeys.Press(shortcut.PhysicalKeycode.ToString(), true)) windowController?.Toggle();
+            GetViewport().SetInputAsHandled(); return;
+        }
+        if (input is InputEventKey { Pressed: false } key)
+        { windowShortcutKeys.Release(key.PhysicalKeycode.ToString()); gameplayKeys.Release(key.PhysicalKeycode.ToString()); }
         if (input is InputEventMouseButton { Pressed: false } button)
         {
             if (button.ButtonIndex == MouseButton.Right) orbiting = false;
@@ -285,5 +311,5 @@ public partial class Main : Node3D
     private void ClearGameplayInput()
     { gameplayKeys.Clear(); orbiting = false; core.CancelGameplayInput(); }
 
-    public override void _ExitTree() { authCancel.Cancel(); core.Dispose(); authCancel.Dispose(); }
+    public override void _ExitTree() { windowController?.Dispose(); authCancel.Cancel(); core.Dispose(); authCancel.Dispose(); }
 }

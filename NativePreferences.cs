@@ -13,6 +13,7 @@ public sealed record NativePreferencesSnapshot
     public double Saturation { get; init; } = 1;
     public double PanelOpacity { get; init; } = .94;
     public double UiScale { get; init; } = 1;
+    public bool Fullscreen { get; init; }
     public bool ReducedMotion { get; init; }
     public bool ShowControlHints { get; init; } = true;
     public string VistaId { get; init; } = "deep-space";
@@ -94,5 +95,5 @@ public sealed class NativePreferences
     }
     public void ResetGraphics() => Set(Snapshot with { Brightness = 1, Contrast = 1, Gamma = 1, Saturation = 1,
         LocalLightLimit = "all", Antialiasing = "msaa", MsaaSamples = 4, RenderScale = 1, Lighting = true, Shadows = true, Glow = true });
-    public void ResetDisplay() => Set(Snapshot with { PanelOpacity = .94, UiScale = 1, ReducedMotion = false, ShowControlHints = true, VistaId = "deep-space" });
+    public void ResetDisplay() => Set(Snapshot with { PanelOpacity = .94, UiScale = 1, Fullscreen = false, ReducedMotion = false, ShowControlHints = true, VistaId = "deep-space" });
 }
