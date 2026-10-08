@@ -47,7 +47,7 @@ public sealed class SdkObserverSocketFactory : IObserverSocketFactory
                     subscription = conn.SubscriptionBuilder()
                         .OnApplied(_ => { if (!closed) applied(); })
                         .OnError((_, _) => { if (!closed) failed(ObserverFailure.Subscription); })
-                        .Subscribe(Query);
+                        .Subscribe(new[] { Query });
                 })
                 .OnConnectError(_ => { if (!closed) failed(ObserverFailure.Connection); })
                 .OnDisconnect((_, _) => { if (!closed) disconnected(); })
