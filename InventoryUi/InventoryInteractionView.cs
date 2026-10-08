@@ -69,7 +69,7 @@ public partial class InventoryInteractionView : Control
     }
     private static bool ModalVisible(Node node)
     {
-        foreach(var child in node.GetChildren())
+        foreach(var child in node.GetChildren(true))
             if(child is Window window&&InventoryInteraction.BlocksPopup(window.Visible,window is PopupPanel,window.Exclusive,
                 window.GetFlag(Window.Flags.NoFocus),window.GetFlag(Window.Flags.MousePassthrough))||ModalVisible(child))return true;
         return false;

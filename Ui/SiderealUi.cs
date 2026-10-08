@@ -115,8 +115,25 @@ public partial class SiderealUi : Control
         OversamplingWithScale = OversamplingWithScaleEnum.Enabled;
     }
 
+    private void PrepareNativePopup(Node node)
+    {
+        if(node is not Window {Visible:false} popup||popup.IsQueuedForDeletion()||!IsAncestorOf(popup))return;
+        var passive=!Sidereal.Native.Input.InventoryInteraction.BlocksPopup(true,popup is PopupPanel,popup.Exclusive,
+            popup.GetFlag(Godot.Window.Flags.NoFocus),popup.GetFlag(Godot.Window.Flags.MousePassthrough));
+        if(popup is not PopupMenu&&!passive&&!(popup is PopupPanel&&popup.GetParent() is ColorPickerButton))return;
+        Control? owner=null;
+        for(var parent=popup.GetParent();parent!=null;parent=parent.GetParent())if(parent is Control control){owner=control;break;}
+        if(owner==null||popup.GetChildren().OfType<NativePopupBounds>().Any())return;
+        // Official 4.7.2 release embedded Popup cleanup has mismatched parent-signal
+        // disconnects. Prepare only this UI's proven popup families before showing;
+        // the viewport still owns passive tooltip creation and cancellation.
+        popup.ForceNative=true;
+        popup.AddChild(new NativePopupBounds(popup,owner,GetWindow(),passive,popup.GetChildren().OfType<ItemTooltip>().Any()));
+    }
+
     public override void _Ready()
     {
+        GetTree().NodeAdded += PrepareNativePopup;
         palette = SiderealPalette.LoadProfile();
         var preferences = NativePreferences.Current;
         if (preferences.Load(ProjectSettings.GlobalizePath("user://presentation-v1.json")))
@@ -744,6 +761,7 @@ public partial class SiderealUi : Control
 
     public override void _ExitTree()
     {
+        GetTree().NodeAdded -= PrepareNativePopup;
         NativePreferences.Current.Changed -= PreferencesChanged;
         palette.Changed -= ApplyTheme;
         GetViewport().SizeChanged -= QueueLayout;
