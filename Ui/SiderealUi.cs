@@ -120,6 +120,13 @@ public partial class SiderealUi : Control
     private void PrepareNativePopup(Node node)
     {
         if(node is not Window {Visible:false} popup||popup.IsQueuedForDeletion()||!IsAncestorOf(popup))return;
+        if(popup is Popup&&popup.GetClass()==nameof(Popup)&&popup.GetParent() is ColorPicker)
+        {
+            // The engine's application eyedropper owns a display-sized sampling
+            // surface. Keep its geometry and focus flags; it needs no UI bounds.
+            popup.ForceNative=true;
+            return;
+        }
         var passive=!Sidereal.Native.Input.InventoryInteraction.BlocksPopup(true,popup is PopupPanel,popup.Exclusive,
             popup.GetFlag(Godot.Window.Flags.NoFocus),popup.GetFlag(Godot.Window.Flags.MousePassthrough));
         if(popup is not PopupMenu&&!passive&&!(popup is PopupPanel&&popup.GetParent() is ColorPickerButton))return;
