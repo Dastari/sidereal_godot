@@ -26,6 +26,7 @@ public partial class Main : Node3D
     private SpaceCombatEffects combatEffects = null!;
     private readonly GameplayKeyState gameplayKeys = new();
     private readonly GameplayKeyState windowShortcutKeys = new();
+    private bool windowShortcutFocusReturned;
     private ulong gameplayEpoch;
     private bool keyboardWasAllowed, orbiting;
     private NativePreferencesSnapshot? appliedPreferences;
@@ -87,7 +88,7 @@ public partial class Main : Node3D
         { ClearGameplayInput(); ui.CancelInteractions(preserveKeyboardFocus: true); });
         if (uiSmoke) core.Connect("", provider: false);
         GetWindow().FocusExited += () => { focused = false; ClearGameplayInput(); ui.CancelInteractions(); };
-        GetWindow().FocusEntered += () => focused = true;
+        GetWindow().FocusEntered += () => { focused = true; windowShortcutFocusReturned = true; };
     }
 
     private void BuildWorld()
@@ -115,6 +116,14 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        if (focused && windowShortcutFocusReturned)
+        {
+            windowShortcutFocusReturned = false;
+            // A release in another native window has no _Input event here. Wait
+            // until input is drained, retaining shortcuts still physically held.
+            foreach (var key in new[] { Key.F11, Key.Enter })
+                if (!Godot.Input.IsPhysicalKeyPressed(key)) windowShortcutKeys.Release(key.ToString());
+        }
         windowController?.Observe();
         if (diagnosticQuitPath != null && File.Exists(diagnosticQuitPath))
         { ClearGameplayInput(); ui.CancelInteractions(); GetTree().Quit(); return; }
